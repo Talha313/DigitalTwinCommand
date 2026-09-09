@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Digital Twin Command Center — dark AI interface */
+    --background: 222 48% 5%; /* #070B14 */
+    --foreground: 210 40% 98%;
+
+    --card: 221 39% 11%; /* #111827 */
+    --card-foreground: 210 40% 98%;
+
+    --popover: 221 39% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 189 94% 43%; /* cyan accent */
+    --primary-foreground: 222 47% 6%;
+
+    --secondary: 221 30% 14%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 221 30% 13%;
+    --muted-foreground: 218 16% 66%;
+
+    --accent: 221 26% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 24% 19%;
+    --input: 220 24% 22%;
+    --ring: 189 94% 43%;
+
+    --radius: 0.65rem;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  html {
+    color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: hsl(var(--primary) / 0.3);
+  }
+}
+
+@layer components {
+  .auth-grid {
+    background-image:
+      linear-gradient(to right, hsl(var(--border) / 0.4) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border) / 0.4) 1px, transparent 1px);
+    background-size: 56px 56px;
+    -webkit-mask-image: radial-gradient(ellipse at 50% 40%, black 10%, transparent 70%);
+    mask-image: radial-gradient(ellipse at 50% 40%, black 10%, transparent 70%);
+  }
+
+  .auth-link {
+    @apply rounded-sm font-medium text-primary underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+  }
+}
