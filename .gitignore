@@ -1,3 +1,9 @@
 node_modules
-.env.example
-.claude/*
+.env
+.env*.local
+.turbo
+dist
+.next
+out
+*.tsbuildinfo
+.DS_Store
