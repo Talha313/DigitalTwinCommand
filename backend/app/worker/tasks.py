@@ -21,6 +21,7 @@ from app.providers.anthropic_client import anthropic_client
 from app.services.base import as_uuid
 from app.services.push import notify_users
 from app.worker.report_pipeline import (
+    ReportGone,
     finalize_from_videos,
     render,
     research_and_script,
@@ -53,6 +54,9 @@ async def run_daily_report(ctx: dict[str, Any]) -> str:
 async def generate_report(ctx: dict[str, Any], report_id: str) -> None:
     try:
         result = await research_and_script(report_id)
+    except ReportGone:
+        log.info("report %s was deleted; dropping job", report_id)
+        return
     except Exception as exc:
         log.exception("report %s research/script failed", report_id)
         await _page_operators(report_id, f"Report generation failed: {exc}")
@@ -67,6 +71,9 @@ async def generate_report(ctx: dict[str, Any], report_id: str) -> None:
 async def render_report(ctx: dict[str, Any], report_id: str) -> None:
     try:
         await render(report_id)
+    except ReportGone:
+        log.info("report %s was deleted; dropping job", report_id)
+        return
     except Exception as exc:
         log.exception("report %s render failed", report_id)
         await _page_operators(report_id, f"Report render failed: {exc}")
@@ -88,6 +95,9 @@ async def render_report(ctx: dict[str, Any], report_id: str) -> None:
 async def package_report(ctx: dict[str, Any], report_id: str, raw_videos: dict[str, str]) -> None:
     try:
         await finalize_from_videos(report_id, raw_videos)
+    except ReportGone:
+        log.info("report %s was deleted; dropping job", report_id)
+        return
     except Exception as exc:
         log.exception("report %s packaging failed", report_id)
         await _page_operators(report_id, f"Report packaging failed: {exc}")

@@ -44,6 +44,19 @@ _SCRIPT_SYSTEM = (
 )
 
 
+class ReportGone(AppError):
+    """The report row was deleted while a job for it was still queued."""
+
+    status_code = 410
+    code = "report_gone"
+
+
+async def _require_report(report_id: str) -> None:
+    async with session_scope() as session:
+        if await session.get(Report, as_uuid(report_id)) is None:
+            raise ReportGone(f"Report {report_id} no longer exists.")
+
+
 async def _stage(
     report_id: str,
     stage: ReportStage,
@@ -52,6 +65,8 @@ async def _stage(
     error: str | None = None,
 ) -> None:
     async with session_scope() as session:
+        if await session.get(Report, as_uuid(report_id)) is None:
+            return  # report deleted — nothing to record
         row = (
             await session.execute(
                 select(ReportJob).where(
@@ -83,6 +98,7 @@ async def _set_status(report_id: str, status: ReportStatus, *, error: str | None
 
 async def research_and_script(report_id: str) -> ReportStatus:
     """Stages 1-2. Ends at SCRIPT_READY (or APPROVED if approval is off)."""
+    await _require_report(report_id)
     # --- research ---
     await _set_status(report_id, ReportStatus.RESEARCHING)
     await _stage(report_id, ReportStage.RESEARCH, ReportJobStatus.RUNNING)
@@ -101,6 +117,8 @@ async def research_and_script(report_id: str) -> ReportStatus:
         raise
     async with session_scope() as session:
         report = await session.get(Report, as_uuid(report_id))
+        if report is None:
+            raise ReportGone(f"Report {report_id} no longer exists.")
         report.brief_json = brief
         report.tool_traces = {"research": res.get("tool_traces", [])}
         report.model = res.get("model")
@@ -126,6 +144,8 @@ async def research_and_script(report_id: str) -> ReportStatus:
         raise
     async with session_scope() as session:
         report = await session.get(Report, as_uuid(report_id))
+        if report is None:
+            raise ReportGone(f"Report {report_id} no longer exists.")
         report.script = script_res["text"]
     await _stage(report_id, ReportStage.SCRIPT, ReportJobStatus.COMPLETED)
 
@@ -148,9 +168,12 @@ async def render(report_id: str) -> None:
     ``AWAITING_AVATAR`` for an operator to render in ElevenCreative and upload
     via ``POST /api/reports/{id}/avatar``. ``heygen`` / ``did`` run end-to-end.
     """
+    await _require_report(report_id)
     await _set_status(report_id, ReportStatus.GENERATING)
     async with session_scope() as session:
         report = await session.get(Report, as_uuid(report_id))
+        if report is None:
+            raise ReportGone(f"Report {report_id} no longer exists.")
         script = report.script or ""
         report_key = _report_key(report)
     if not script:
@@ -201,6 +224,8 @@ async def finalize_from_videos(
     ``raw_videos`` maps '16x9'/'9x16' to a downloadable source MP4 URL."""
     async with session_scope() as session:
         report = await session.get(Report, as_uuid(report_id))
+        if report is None:
+            raise ReportGone(f"Report {report_id} no longer exists.")
         report_key = _report_key(report)
         script = report.script or ""
         if srt_text is None:
