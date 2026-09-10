@@ -1,1 +1,0 @@
-// validate X-Twilio-Signature

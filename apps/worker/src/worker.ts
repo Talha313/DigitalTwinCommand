@@ -1,1 +1,0 @@
-// queue consumer bootstrap
