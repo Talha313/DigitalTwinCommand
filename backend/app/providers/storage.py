@@ -1,5 +1,6 @@
 """S3 / MinIO-compatible object storage for recordings, generated audio,
 avatar videos, captions and training exports."""
+
 from __future__ import annotations
 
 import asyncio
@@ -73,7 +74,7 @@ class Storage:
 
         try:
             return await asyncio.to_thread(_head)
-        except Exception:  # noqa: BLE001
+        except Exception:
             return False
 
 

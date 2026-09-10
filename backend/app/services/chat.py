@@ -47,7 +47,7 @@ class ChatService:
         except AppError as exc:
             yield _sse({"type": "error", "error": exc.message})
             return
-        except Exception:  # noqa: BLE001
+        except Exception:
             log.exception("chat stream crashed")
             yield _sse({"type": "error", "error": "The twin is unavailable right now."})
             return
@@ -63,9 +63,7 @@ class ChatService:
             }
         )
 
-    async def _prepare(
-        self, req: ChatRequest, user_id: str | None
-    ) -> tuple[str, list[dict], str]:
+    async def _prepare(self, req: ChatRequest, user_id: str | None) -> tuple[str, list[dict], str]:
         async with session_scope() as session:
             svc = ConversationService(session)
             if req.conversation_id:
@@ -74,9 +72,7 @@ class ChatService:
                 role_ids = req.role_ids or conv.role_ids
             else:
                 conv = await svc.create(
-                    ConversationCreate(
-                        title=req.title or req.content[:60], role_ids=req.role_ids
-                    ),
+                    ConversationCreate(title=req.title or req.content[:60], role_ids=req.role_ids),
                     user_id=user_id,
                 )
                 conversation_id = conv.id
@@ -97,9 +93,7 @@ class ChatService:
             system = build_system_prompt(roles, channel="chat")
         return conversation_id, history, system
 
-    async def _persist_reply(
-        self, conversation_id: str, text: str, role_ids: list[str]
-    ) -> str:
+    async def _persist_reply(self, conversation_id: str, text: str, role_ids: list[str]) -> str:
         if not text:
             return ""
         async with session_scope() as session:

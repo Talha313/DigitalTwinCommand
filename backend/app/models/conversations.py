@@ -1,14 +1,13 @@
 """DTOs for chat conversations and their messages."""
+
 from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from app.db.models.enums import MessageRole
-
-_orm = ConfigDict(from_attributes=True)
-
+from app.models.base import ORMModel
 
 # --- messages --------------------------------------------------------------
 
@@ -18,9 +17,7 @@ class MessageCreate(BaseModel):
     meta: dict | None = None
 
 
-class MessageRead(BaseModel):
-    model_config = _orm
-
+class MessageRead(ORMModel):
     id: str
     conversation_id: str
     role: MessageRole
@@ -45,10 +42,8 @@ class ConversationRolesUpdate(BaseModel):
     role_ids: list[str]
 
 
-class ConversationListItem(BaseModel):
+class ConversationListItem(ORMModel):
     """Row in the conversation list — no messages."""
-
-    model_config = _orm
 
     id: str
     user_id: str | None = None
@@ -59,9 +54,7 @@ class ConversationListItem(BaseModel):
     message_count: int = 0
 
 
-class ConversationRead(BaseModel):
-    model_config = _orm
-
+class ConversationRead(ORMModel):
     id: str
     user_id: str | None = None
     title: str | None

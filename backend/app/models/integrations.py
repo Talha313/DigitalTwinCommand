@@ -1,14 +1,14 @@
 """DTOs for the integrations resource. ``configuration`` may hold secrets and is
 never returned in read models."""
+
 from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from app.db.models.enums import IntegrationStatus
-
-_orm = ConfigDict(from_attributes=True)
+from app.models.base import ORMModel
 
 
 class IntegrationCreate(BaseModel):
@@ -26,9 +26,7 @@ class IntegrationUpdate(BaseModel):
     configuration: dict | None = None
 
 
-class IntegrationRead(BaseModel):
-    model_config = _orm
-
+class IntegrationRead(ORMModel):
     id: str
     name: str
     provider: str

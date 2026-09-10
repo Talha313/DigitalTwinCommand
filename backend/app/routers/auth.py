@@ -3,8 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Request, Response
 
 from app.core.config import settings
-from app.dependencies import current_user
 from app.db.models.user import User
+from app.dependencies import current_user
 from app.models.auth import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
@@ -33,9 +33,7 @@ def _set_cookies(response: Response, session: SessionResponse) -> None:
     response.set_cookie(
         settings.auth_cookie_name, session.access_token, max_age=_ACCESS_MAX_AGE, **common
     )
-    response.set_cookie(
-        _REFRESH_COOKIE, session.refresh_token, max_age=_REFRESH_MAX_AGE, **common
-    )
+    response.set_cookie(_REFRESH_COOKIE, session.refresh_token, max_age=_REFRESH_MAX_AGE, **common)
 
 
 def _clear_cookies(response: Response) -> None:
@@ -123,5 +121,5 @@ async def reset_password(
 async def _safe_json(request: Request) -> dict:
     try:
         return await request.json()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return {}

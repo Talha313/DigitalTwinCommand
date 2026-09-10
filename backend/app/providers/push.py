@@ -1,4 +1,5 @@
 """Web-push (VAPID) delivery to installed PWAs."""
+
 from __future__ import annotations
 
 import asyncio

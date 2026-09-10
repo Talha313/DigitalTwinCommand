@@ -47,17 +47,19 @@ async def notify_users(user_ids: list[str], payload: dict) -> None:
         return
     async with session_scope() as session:
         subs = (
-            await session.execute(
-                select(PushSubscription).where(
-                    PushSubscription.user_id.in_([as_uuid(u) for u in user_ids])
+            (
+                await session.execute(
+                    select(PushSubscription).where(
+                        PushSubscription.user_id.in_([as_uuid(u) for u in user_ids])
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         stale: list[str] = []
         for sub in subs:
-            alive = await push_client.send(
-                {"endpoint": sub.endpoint, "keys": sub.keys}, payload
-            )
+            alive = await push_client.send({"endpoint": sub.endpoint, "keys": sub.keys}, payload)
             if alive:
                 sub.last_used_at = datetime.now(UTC)
             else:

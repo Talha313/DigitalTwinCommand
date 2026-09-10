@@ -22,9 +22,7 @@ class MemoryService(Service):
         return [MemoryRead.model_validate(r) for r in rows]
 
     async def get(self, memory_id: str) -> MemoryRead:
-        return MemoryRead.model_validate(
-            await self._get(Memory, memory_id, label="Memory")
-        )
+        return MemoryRead.model_validate(await self._get(Memory, memory_id, label="Memory"))
 
     async def create(self, data: MemoryCreate) -> MemoryRead:
         mem = Memory(

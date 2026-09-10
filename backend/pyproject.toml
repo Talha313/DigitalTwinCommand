@@ -48,6 +48,15 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "ASYNC", "RUF"]
+# B008: FastAPI's Depends()/Query() in defaults is the intended pattern.
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"app/worker/main.py" = ["RUF012"]  # arq WorkerSettings is a plain config class
+# Pydantic models: mutable defaults are handled by pydantic; ruff can't see the
+# ORMModel base is a BaseModel subclass.
+"app/models/*" = ["RUF012"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+filterwarnings = ["ignore::DeprecationWarning"]

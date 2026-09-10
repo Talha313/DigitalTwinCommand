@@ -3,8 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
-from app.dependencies import current_user
 from app.db.models.user import User
+from app.dependencies import current_user
 from app.models.chat import ChatRequest
 from app.services.chat import ChatService, get_chat_service
 

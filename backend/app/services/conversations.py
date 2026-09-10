@@ -82,7 +82,9 @@ class ConversationService(Service):
             out.append(item)
         return out
 
-    async def create(self, data: ConversationCreate, *, user_id: str | None = None) -> ConversationRead:
+    async def create(
+        self, data: ConversationCreate, *, user_id: str | None = None
+    ) -> ConversationRead:
         conv = Conversation(title=data.title, user_id=as_uuid(user_id) if user_id else None)
         self.session.add(conv)
         await self.session.flush()
@@ -105,7 +107,9 @@ class ConversationService(Service):
         conv = await self._get(Conversation, conversation_id, label="Conversation")
         await self.session.delete(conv)
 
-    async def set_roles(self, conversation_id: str, data: ConversationRolesUpdate) -> ConversationRead:
+    async def set_roles(
+        self, conversation_id: str, data: ConversationRolesUpdate
+    ) -> ConversationRead:
         await self._get(Conversation, conversation_id, label="Conversation")
         await self._set_role_ids(conversation_id, data.role_ids)
         await self.session.flush()
@@ -114,12 +118,16 @@ class ConversationService(Service):
     async def list_messages(self, conversation_id: str) -> list[MessageRead]:
         await self._get(Conversation, conversation_id, label="Conversation")
         rows = (
-            await self.session.execute(
-                select(Message)
-                .where(Message.conversation_id == as_uuid(conversation_id))
-                .order_by(Message.created_at)
+            (
+                await self.session.execute(
+                    select(Message)
+                    .where(Message.conversation_id == as_uuid(conversation_id))
+                    .order_by(Message.created_at)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return [MessageRead.model_validate(r) for r in rows]
 
     async def add_message(

@@ -46,9 +46,7 @@ class AuthService(Service):
         self, data: SignupRequest, *, user_agent: str | None = None, ip: str | None = None
     ) -> SessionResponse:
         existing = (
-            await self.session.execute(
-                select(User).where(User.email == data.email.lower())
-            )
+            await self.session.execute(select(User).where(User.email == data.email.lower()))
         ).scalar_one_or_none()
         if existing is not None:
             raise ConflictError("An account with this email already exists.")
@@ -71,9 +69,7 @@ class AuthService(Service):
         self, data: LoginRequest, *, user_agent: str | None = None, ip: str | None = None
     ) -> SessionResponse:
         user = (
-            await self.session.execute(
-                select(User).where(User.email == data.email.lower())
-            )
+            await self.session.execute(select(User).where(User.email == data.email.lower()))
         ).scalar_one_or_none()
         if user is None or not verify_password(data.password, user.password_hash):
             raise AuthError("Incorrect email or password.")
@@ -88,7 +84,7 @@ class AuthService(Service):
     ) -> SessionResponse:
         try:
             payload = decode_token(refresh_token, expected_type="refresh")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise AuthError("Invalid or expired session.") from exc
 
         token_hash = _hash_token(refresh_token)
@@ -129,9 +125,7 @@ class AuthService(Service):
 
     async def forgot_password(self, email: str) -> ForgotPasswordResponse:
         user = (
-            await self.session.execute(
-                select(User).where(User.email == email.lower())
-            )
+            await self.session.execute(select(User).where(User.email == email.lower()))
         ).scalar_one_or_none()
         if user is None:
             return ForgotPasswordResponse(ok=True)
@@ -146,9 +140,7 @@ class AuthService(Service):
         )
         log.info("password reset requested user=%s", user.id)
         # TODO: send `raw` by email. Returned inline only outside production.
-        return ForgotPasswordResponse(
-            ok=True, reset_token=None if settings.is_production else raw
-        )
+        return ForgotPasswordResponse(ok=True, reset_token=None if settings.is_production else raw)
 
     async def reset_password(self, data: ResetPasswordRequest) -> None:
         row = (
@@ -189,8 +181,7 @@ class AuthService(Service):
                 token_hash=_hash_token(refresh),
                 user_agent=(user_agent or "")[:400] or None,
                 ip=ip,
-                expires_at=datetime.now(UTC)
-                + timedelta(days=settings.refresh_token_ttl_days),
+                expires_at=datetime.now(UTC) + timedelta(days=settings.refresh_token_ttl_days),
             )
         )
         return SessionResponse(

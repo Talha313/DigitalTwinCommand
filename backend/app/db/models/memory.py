@@ -1,5 +1,6 @@
 """Memories — the knowledge store / future-training data collected from the
 platform (chats, calls, whispers, documents)."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -25,6 +26,4 @@ class Memory(UUIDMixin, Base):
     status: Mapped[MemoryStatus] = mapped_column(
         Enum(MemoryStatus, name="memory_status"), default=MemoryStatus.PENDING
     )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

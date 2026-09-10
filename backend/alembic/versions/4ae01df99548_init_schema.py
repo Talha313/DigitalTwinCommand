@@ -1,8 +1,8 @@
-"""init
+"""init schema
 
-Revision ID: df89b67eed30
+Revision ID: 4ae01df99548
 Revises: 
-Create Date: 2026-09-10 21:02:46.222193
+Create Date: 2026-09-10 21:57:07.255207
 """
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = 'df89b67eed30'
+revision: str = '4ae01df99548'
 down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -75,21 +75,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_permissions_name'), 'permissions', ['name'], unique=True)
-    op.create_table('reports',
-    sa.Column('date', sa.Date(), nullable=True),
-    sa.Column('status', sa.Enum('QUEUED', 'RESEARCHING', 'SCRIPT_READY', 'APPROVED', 'GENERATING', 'READY', 'FAILED', name='report_status'), nullable=False),
-    sa.Column('brief_json', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-    sa.Column('script', sa.Text(), nullable=True),
-    sa.Column('audio_url', sa.Text(), nullable=True),
-    sa.Column('video_16x9', sa.Text(), nullable=True),
-    sa.Column('video_9x16', sa.Text(), nullable=True),
-    sa.Column('captions_url', sa.Text(), nullable=True),
-    sa.Column('model', sa.String(length=64), nullable=True),
-    sa.Column('cost_cents', sa.Integer(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-    sa.Column('id', sa.Uuid(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
-    )
     op.create_table('tools',
     sa.Column('name', sa.String(length=120), nullable=False),
     sa.Column('provider', sa.String(length=120), nullable=True),
@@ -120,9 +105,14 @@ def upgrade() -> None:
     sa.Column('direction', sa.Enum('INCOMING', 'OUTGOING', name='call_direction'), nullable=False),
     sa.Column('from_e164', sa.String(length=20), nullable=True),
     sa.Column('to_e164', sa.String(length=20), nullable=True),
-    sa.Column('status', sa.Enum('RINGING', 'CONNECTED', 'COMPLETED', 'FAILED', name='call_status'), nullable=False),
+    sa.Column('status', sa.Enum('QUEUED', 'RINGING', 'IN_PROGRESS', 'CONNECTED', 'COMPLETED', 'FAILED', 'NO_ANSWER', 'CANCELED', name='call_status'), nullable=False),
     sa.Column('outcome', sa.Enum('WON', 'LOST', 'FOLLOW_UP', 'JUNK', name='call_outcome'), nullable=True),
     sa.Column('recording_url', sa.Text(), nullable=True),
+    sa.Column('recording_consent', sa.Boolean(), nullable=False),
+    sa.Column('model', sa.String(length=120), nullable=True),
+    sa.Column('summary', sa.Text(), nullable=True),
+    sa.Column('tool_call_count', sa.Integer(), nullable=False),
+    sa.Column('cost_cents', sa.Integer(), nullable=True),
     sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('ended_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('duration_seconds', sa.Integer(), nullable=True),
@@ -133,6 +123,7 @@ def upgrade() -> None:
     sa.UniqueConstraint('eleven_conversation_id'),
     sa.UniqueConstraint('twilio_sid')
     )
+    op.create_index(op.f('ix_calls_started_at'), 'calls', ['started_at'], unique=False)
     op.create_index(op.f('ix_calls_user_id'), 'calls', ['user_id'], unique=False)
     op.create_table('conversations',
     sa.Column('user_id', sa.Uuid(), nullable=True),
@@ -156,18 +147,66 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_memories_user_id'), 'memories', ['user_id'], unique=False)
-    op.create_table('report_jobs',
-    sa.Column('report_id', sa.Uuid(), nullable=False),
-    sa.Column('stage', sa.Enum('RESEARCH', 'SCRIPT', 'VOICE', 'AVATAR', 'PROCESSING', 'UPLOAD', name='report_stage'), nullable=False),
-    sa.Column('status', sa.Enum('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', name='report_job_status'), nullable=False),
-    sa.Column('error_message', sa.Text(), nullable=True),
-    sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
-    sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
+    op.create_table('password_reset_tokens',
+    sa.Column('user_id', sa.Uuid(), nullable=False),
+    sa.Column('token_hash', sa.String(length=128), nullable=False),
+    sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('used_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
-    sa.ForeignKeyConstraint(['report_id'], ['reports.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_report_jobs_report_id'), 'report_jobs', ['report_id'], unique=False)
+    op.create_index(op.f('ix_password_reset_tokens_token_hash'), 'password_reset_tokens', ['token_hash'], unique=True)
+    op.create_index(op.f('ix_password_reset_tokens_user_id'), 'password_reset_tokens', ['user_id'], unique=False)
+    op.create_table('push_subscriptions',
+    sa.Column('user_id', sa.Uuid(), nullable=True),
+    sa.Column('endpoint', sa.Text(), nullable=False),
+    sa.Column('keys', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+    sa.Column('user_agent', sa.String(length=400), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('last_used_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('id', sa.Uuid(), nullable=False),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('endpoint', name='uq_push_endpoint')
+    )
+    op.create_index(op.f('ix_push_subscriptions_user_id'), 'push_subscriptions', ['user_id'], unique=False)
+    op.create_table('refresh_sessions',
+    sa.Column('user_id', sa.Uuid(), nullable=False),
+    sa.Column('token_hash', sa.String(length=128), nullable=False),
+    sa.Column('user_agent', sa.String(length=400), nullable=True),
+    sa.Column('ip', sa.String(length=64), nullable=True),
+    sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('revoked_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('id', sa.Uuid(), nullable=False),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_refresh_sessions_token_hash'), 'refresh_sessions', ['token_hash'], unique=True)
+    op.create_index(op.f('ix_refresh_sessions_user_id'), 'refresh_sessions', ['user_id'], unique=False)
+    op.create_table('reports',
+    sa.Column('date', sa.Date(), nullable=True),
+    sa.Column('status', sa.Enum('QUEUED', 'RESEARCHING', 'SCRIPT_READY', 'APPROVED', 'GENERATING', 'READY', 'FAILED', name='report_status'), nullable=False),
+    sa.Column('brief_json', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('script', sa.Text(), nullable=True),
+    sa.Column('tool_traces', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('error_message', sa.Text(), nullable=True),
+    sa.Column('approved_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('approved_by', sa.Uuid(), nullable=True),
+    sa.Column('audio_url', sa.Text(), nullable=True),
+    sa.Column('video_16x9', sa.Text(), nullable=True),
+    sa.Column('video_9x16', sa.Text(), nullable=True),
+    sa.Column('captions_url', sa.Text(), nullable=True),
+    sa.Column('model', sa.String(length=64), nullable=True),
+    sa.Column('cost_cents', sa.Integer(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+    sa.Column('id', sa.Uuid(), nullable=False),
+    sa.ForeignKeyConstraint(['approved_by'], ['users.id'], ondelete='SET NULL'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_reports_date'), 'reports', ['date'], unique=True)
     op.create_table('role_permissions',
     sa.Column('role_id', sa.Uuid(), nullable=False),
     sa.Column('permission_id', sa.Uuid(), nullable=False),
@@ -221,12 +260,24 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_messages_conversation_id'), 'messages', ['conversation_id'], unique=False)
+    op.create_table('report_jobs',
+    sa.Column('report_id', sa.Uuid(), nullable=False),
+    sa.Column('stage', sa.Enum('RESEARCH', 'SCRIPT', 'VOICE', 'AVATAR', 'PROCESSING', 'UPLOAD', name='report_stage'), nullable=False),
+    sa.Column('status', sa.Enum('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', name='report_job_status'), nullable=False),
+    sa.Column('error_message', sa.Text(), nullable=True),
+    sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('id', sa.Uuid(), nullable=False),
+    sa.ForeignKeyConstraint(['report_id'], ['reports.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_report_jobs_report_id'), 'report_jobs', ['report_id'], unique=False)
     op.create_table('utterances',
     sa.Column('call_id', sa.Uuid(), nullable=False),
     sa.Column('timestamp', sa.DateTime(timezone=True), nullable=True),
     sa.Column('speaker', sa.Enum('CALLER', 'TWIN', 'WHISPER', name='utterance_speaker'), nullable=False),
     sa.Column('text', sa.Text(), nullable=False),
-    sa.Column('source', sa.Enum('TWILIO', 'ELEVENLABS', 'GROK', 'OPERATOR', name='utterance_source'), nullable=True),
+    sa.Column('source', sa.Enum('TWILIO', 'ELEVENLABS', 'LLM', 'OPERATOR', name='utterance_source'), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.ForeignKeyConstraint(['call_id'], ['calls.id'], ondelete='CASCADE'),
@@ -236,12 +287,16 @@ def upgrade() -> None:
     op.create_table('whispers',
     sa.Column('call_id', sa.Uuid(), nullable=False),
     sa.Column('text', sa.Text(), nullable=False),
+    sa.Column('kind', sa.Enum('CONTEXTUAL_UPDATE', 'USER_MESSAGE', name='whisper_kind'), nullable=False),
     sa.Column('status', sa.Enum('QUEUED', 'INJECTED', 'SPOKEN', 'FAILED', name='whisper_status'), nullable=False),
+    sa.Column('created_by', sa.Uuid(), nullable=True),
+    sa.Column('injected_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('spoken_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('used_in_training', sa.Boolean(), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.ForeignKeyConstraint(['call_id'], ['calls.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['created_by'], ['users.id'], ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_whispers_call_id'), 'whispers', ['call_id'], unique=False)
@@ -254,6 +309,8 @@ def downgrade() -> None:
     op.drop_table('whispers')
     op.drop_index(op.f('ix_utterances_call_id'), table_name='utterances')
     op.drop_table('utterances')
+    op.drop_index(op.f('ix_report_jobs_report_id'), table_name='report_jobs')
+    op.drop_table('report_jobs')
     op.drop_index(op.f('ix_messages_conversation_id'), table_name='messages')
     op.drop_table('messages')
     op.drop_table('conversation_roles')
@@ -266,19 +323,27 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_role_permissions_role_id'), table_name='role_permissions')
     op.drop_index(op.f('ix_role_permissions_permission_id'), table_name='role_permissions')
     op.drop_table('role_permissions')
-    op.drop_index(op.f('ix_report_jobs_report_id'), table_name='report_jobs')
-    op.drop_table('report_jobs')
+    op.drop_index(op.f('ix_reports_date'), table_name='reports')
+    op.drop_table('reports')
+    op.drop_index(op.f('ix_refresh_sessions_user_id'), table_name='refresh_sessions')
+    op.drop_index(op.f('ix_refresh_sessions_token_hash'), table_name='refresh_sessions')
+    op.drop_table('refresh_sessions')
+    op.drop_index(op.f('ix_push_subscriptions_user_id'), table_name='push_subscriptions')
+    op.drop_table('push_subscriptions')
+    op.drop_index(op.f('ix_password_reset_tokens_user_id'), table_name='password_reset_tokens')
+    op.drop_index(op.f('ix_password_reset_tokens_token_hash'), table_name='password_reset_tokens')
+    op.drop_table('password_reset_tokens')
     op.drop_index(op.f('ix_memories_user_id'), table_name='memories')
     op.drop_table('memories')
     op.drop_index(op.f('ix_conversations_user_id'), table_name='conversations')
     op.drop_table('conversations')
     op.drop_index(op.f('ix_calls_user_id'), table_name='calls')
+    op.drop_index(op.f('ix_calls_started_at'), table_name='calls')
     op.drop_table('calls')
     op.drop_index(op.f('ix_users_email'), table_name='users')
     op.drop_table('users')
     op.drop_index(op.f('ix_tools_name'), table_name='tools')
     op.drop_table('tools')
-    op.drop_table('reports')
     op.drop_index(op.f('ix_permissions_name'), table_name='permissions')
     op.drop_table('permissions')
     op.drop_table('integrations')

@@ -1,4 +1,5 @@
 """Call-related tables: calls and the call_roles mapping."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -34,18 +35,14 @@ class Call(UUIDMixin, Base):
     twilio_sid: Mapped[str | None] = mapped_column(String(64), unique=True)
     eleven_conversation_id: Mapped[str | None] = mapped_column(String(64), unique=True)
 
-    direction: Mapped[CallDirection] = mapped_column(
-        Enum(CallDirection, name="call_direction")
-    )
+    direction: Mapped[CallDirection] = mapped_column(Enum(CallDirection, name="call_direction"))
     from_e164: Mapped[str | None] = mapped_column(String(20))
     to_e164: Mapped[str | None] = mapped_column(String(20))
 
     status: Mapped[CallStatus] = mapped_column(
         Enum(CallStatus, name="call_status"), default=CallStatus.RINGING
     )
-    outcome: Mapped[CallOutcome | None] = mapped_column(
-        Enum(CallOutcome, name="call_outcome")
-    )
+    outcome: Mapped[CallOutcome | None] = mapped_column(Enum(CallOutcome, name="call_outcome"))
     recording_url: Mapped[str | None] = mapped_column(Text)
     recording_consent: Mapped[bool] = mapped_column(Boolean, default=False)
 
@@ -55,15 +52,11 @@ class Call(UUIDMixin, Base):
     tool_call_count: Mapped[int] = mapped_column(Integer, default=0)
     cost_cents: Mapped[int | None] = mapped_column(Integer)
 
-    started_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), index=True
-    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     duration_seconds: Mapped[int | None] = mapped_column(Integer)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     utterances: Mapped[list[Utterance]] = relationship(
         back_populates="call", order_by="Utterance.timestamp"
@@ -77,9 +70,5 @@ class CallRole(UUIDMixin, Base):
     __tablename__ = "call_roles"
     __table_args__ = (UniqueConstraint("call_id", "role_id", name="uq_call_role"),)
 
-    call_id: Mapped[str] = mapped_column(
-        ForeignKey("calls.id", ondelete="CASCADE"), index=True
-    )
-    role_id: Mapped[str] = mapped_column(
-        ForeignKey("ai_roles.id", ondelete="CASCADE"), index=True
-    )
+    call_id: Mapped[str] = mapped_column(ForeignKey("calls.id", ondelete="CASCADE"), index=True)
+    role_id: Mapped[str] = mapped_column(ForeignKey("ai_roles.id", ondelete="CASCADE"), index=True)

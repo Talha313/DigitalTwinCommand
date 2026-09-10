@@ -1,4 +1,5 @@
 """Builds the twin's system prompt from the active AI roles."""
+
 from __future__ import annotations
 
 from app.db.models.role import Role
@@ -32,9 +33,7 @@ def build_system_prompt(roles: list[Role], *, channel: str = "chat") -> str:
                 if prompt := personality.get("system_prompt"):
                     line += f"\n{prompt}"
             if role.permissions:
-                line += "\nPermitted actions: " + ", ".join(
-                    p.name for p in role.permissions
-                )
+                line += "\nPermitted actions: " + ", ".join(p.name for p in role.permissions)
             enabled_tools = [t.name for t in role.tools]
             if enabled_tools:
                 line += "\nAvailable tools: " + ", ".join(enabled_tools)

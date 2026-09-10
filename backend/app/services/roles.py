@@ -50,9 +50,7 @@ class RoleService(Service):
 
     async def _tool_enabled_map(self, role_id: str) -> dict[str, bool]:
         rows = (
-            await self.session.execute(
-                select(RoleTool).where(RoleTool.role_id == as_uuid(role_id))
-            )
+            await self.session.execute(select(RoleTool).where(RoleTool.role_id == as_uuid(role_id)))
         ).scalars()
         return {str(r.tool_id): r.enabled for r in rows}
 
@@ -105,14 +103,10 @@ class RoleService(Service):
         if data.permission_ids is not None:
             await self._assert_refs(data.permission_ids, [])
             await self.session.execute(
-                RolePermission.__table__.delete().where(
-                    RolePermission.role_id == role.id
-                )
+                RolePermission.__table__.delete().where(RolePermission.role_id == role.id)
             )
             for pid in dict.fromkeys(data.permission_ids):
-                self.session.add(
-                    RolePermission(role_id=role.id, permission_id=as_uuid(pid))
-                )
+                self.session.add(RolePermission(role_id=role.id, permission_id=as_uuid(pid)))
 
         if data.tool_ids is not None:
             await self._assert_refs([], data.tool_ids)
@@ -138,21 +132,29 @@ class RoleService(Service):
     async def _assert_refs(self, permission_ids: list[str], tool_ids: list[str]) -> None:
         if permission_ids:
             found = (
-                await self.session.execute(
-                    select(Permission.id).where(
-                        Permission.id.in_([as_uuid(p) for p in permission_ids])
+                (
+                    await self.session.execute(
+                        select(Permission.id).where(
+                            Permission.id.in_([as_uuid(p) for p in permission_ids])
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             missing = {str(p) for p in permission_ids} - {str(f) for f in found}
             if missing:
                 raise ValidationError(f"Unknown permission id(s): {', '.join(missing)}")
         if tool_ids:
             found = (
-                await self.session.execute(
-                    select(Tool.id).where(Tool.id.in_([as_uuid(t) for t in tool_ids]))
+                (
+                    await self.session.execute(
+                        select(Tool.id).where(Tool.id.in_([as_uuid(t) for t in tool_ids]))
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             missing = {str(t) for t in tool_ids} - {str(f) for f in found}
             if missing:
                 raise ValidationError(f"Unknown tool id(s): {', '.join(missing)}")
@@ -161,8 +163,10 @@ class RoleService(Service):
 class PermissionService(Service):
     async def list_permissions(self) -> list[PermissionRead]:
         rows = (
-            await self.session.execute(select(Permission).order_by(Permission.name))
-        ).scalars().all()
+            (await self.session.execute(select(Permission).order_by(Permission.name)))
+            .scalars()
+            .all()
+        )
         return [PermissionRead.model_validate(r) for r in rows]
 
     async def create_permission(self, data: PermissionCreate) -> PermissionRead:
@@ -177,9 +181,7 @@ class PermissionService(Service):
 
 class ToolService(Service):
     async def list_tools(self) -> list[ToolRead]:
-        rows = (
-            await self.session.execute(select(Tool).order_by(Tool.name))
-        ).scalars().all()
+        rows = (await self.session.execute(select(Tool).order_by(Tool.name))).scalars().all()
         return [ToolRead.model_validate(r) for r in rows]
 
     async def create_tool(self, data: ToolCreate) -> ToolRead:
@@ -211,12 +213,14 @@ async def load_roles_for_prompt(session: AsyncSession, role_ids: list[str]) -> l
     if not role_ids:
         return []
     rows = (
-        await session.execute(
-            select(Role)
-            .options(*_ROLE_OPTS)
-            .where(Role.id.in_([as_uuid(r) for r in role_ids]))
+        (
+            await session.execute(
+                select(Role).options(*_ROLE_OPTS).where(Role.id.in_([as_uuid(r) for r in role_ids]))
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     if not rows:
         raise NotFoundError("None of the requested roles exist.")
     return list(rows)

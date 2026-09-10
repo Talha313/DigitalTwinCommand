@@ -1,4 +1,5 @@
 """Web-push subscriptions registered by installed PWAs."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -20,7 +21,5 @@ class PushSubscription(UUIDMixin, Base):
     endpoint: Mapped[str] = mapped_column(Text)
     keys: Mapped[dict] = mapped_column(JSONB)  # {"p256dh": ..., "auth": ...}
     user_agent: Mapped[str | None] = mapped_column(String(400))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

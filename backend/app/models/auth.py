@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from app.db.models.enums import UserRole, UserStatus
-
-_orm = ConfigDict(from_attributes=True)
+from app.models.base import ORMModel
 
 
 class LoginRequest(BaseModel):
@@ -30,9 +29,7 @@ class ResetPasswordRequest(BaseModel):
     password: str = Field(min_length=8, max_length=200)
 
 
-class UserRead(BaseModel):
-    model_config = _orm
-
+class UserRead(ORMModel):
     id: str
     email: str
     first_name: str | None = None

@@ -63,7 +63,7 @@ async def _probe(provider: str) -> tuple[bool, str]:
                 if push_client.configured
                 else (False, "VAPID keys are not configured.")
             )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return False, f"{exc}"
     return False, "No connection test for this provider."
 
@@ -71,8 +71,10 @@ async def _probe(provider: str) -> tuple[bool, str]:
 class IntegrationService(Service):
     async def list_integrations(self) -> list[IntegrationRead]:
         rows = (
-            await self.session.execute(select(Integration).order_by(Integration.name))
-        ).scalars().all()
+            (await self.session.execute(select(Integration).order_by(Integration.name)))
+            .scalars()
+            .all()
+        )
         return [IntegrationRead.model_validate(r) for r in rows]
 
     async def get(self, integration_id: str) -> IntegrationRead:
@@ -102,9 +104,7 @@ class IntegrationService(Service):
     async def test_connection(self, integration_id: str) -> ConnectionTestResult:
         row = await self._get(Integration, integration_id, label="Integration")
         ok, detail = await _probe(row.provider)
-        row.status = (
-            IntegrationStatus.CONNECTED if ok else IntegrationStatus.ERROR
-        )
+        row.status = IntegrationStatus.CONNECTED if ok else IntegrationStatus.ERROR
         await self.session.flush()
         return ConnectionTestResult(ok=ok, status=row.status, detail=detail)
 

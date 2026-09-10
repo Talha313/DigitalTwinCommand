@@ -1,18 +1,17 @@
 """DTOs for the reports resource."""
+
 from __future__ import annotations
 
-from datetime import date as _date, datetime
+from datetime import date as _date
+from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from app.db.models.enums import ReportJobStatus, ReportStage, ReportStatus
+from app.models.base import ORMModel
 
-_orm = ConfigDict(from_attributes=True)
 
-
-class ReportListItem(BaseModel):
-    model_config = _orm
-
+class ReportListItem(ORMModel):
     id: str
     date: _date | None = None
     status: ReportStatus
@@ -21,9 +20,7 @@ class ReportListItem(BaseModel):
     created_at: datetime
 
 
-class ReportRead(BaseModel):
-    model_config = _orm
-
+class ReportRead(ORMModel):
     id: str
     date: _date | None = None
     status: ReportStatus
@@ -43,9 +40,7 @@ class ReportApproveResponse(BaseModel):
     status: ReportStatus
 
 
-class ReportJobRead(BaseModel):
-    model_config = _orm
-
+class ReportJobRead(ORMModel):
     id: str
     report_id: str
     stage: ReportStage

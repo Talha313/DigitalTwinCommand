@@ -1,4 +1,5 @@
 """Password hashing and JWT session tokens."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta

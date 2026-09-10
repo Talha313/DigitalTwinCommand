@@ -14,9 +14,7 @@ router = APIRouter(prefix="/push", tags=["push"])
 
 @router.get("/vapid-public-key", response_model=VapidPublicKey)
 async def vapid_public_key() -> VapidPublicKey:
-    return VapidPublicKey(
-        public_key=settings.vapid_public_key, configured=push_client.configured
-    )
+    return VapidPublicKey(public_key=settings.vapid_public_key, configured=push_client.configured)
 
 
 @router.post("/subscribe", status_code=204)

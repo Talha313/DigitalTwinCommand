@@ -1,13 +1,13 @@
 """DTOs for the memory / knowledge store."""
+
 from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.db.models.enums import MemorySourceType, MemoryStatus
-
-_orm = ConfigDict(from_attributes=True)
+from app.models.base import ORMModel
 
 
 class MemoryCreate(BaseModel):
@@ -21,9 +21,7 @@ class MemoryStatusUpdate(BaseModel):
     status: MemoryStatus
 
 
-class MemoryRead(BaseModel):
-    model_config = _orm
-
+class MemoryRead(ORMModel):
     id: str
     user_id: str | None = None
     content: str

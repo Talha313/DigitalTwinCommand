@@ -1,6 +1,7 @@
 """ElevenLabs — Agents platform (Twilio phone agent) + long-form TTS for the
 daily report. The agent's LLM (Claude) is configured in the ElevenLabs
 dashboard; we only orchestrate audio, transcript and whisper injection."""
+
 from __future__ import annotations
 
 import hashlib
@@ -63,9 +64,7 @@ class ElevenLabsClient:
         return resp.json()
 
     async def account(self) -> dict[str, Any]:
-        resp = await shared_client().get(
-            f"{_BASE}/v1/user/subscription", headers=self._headers()
-        )
+        resp = await shared_client().get(f"{_BASE}/v1/user/subscription", headers=self._headers())
         resp.raise_for_status()
         return resp.json()
 
@@ -114,9 +113,7 @@ class ElevenLabsClient:
         if not signature_header:
             return False
         # Header format: "t=<ts>,v0=<hex>"
-        parts = dict(
-            p.split("=", 1) for p in signature_header.split(",") if "=" in p
-        )
+        parts = dict(p.split("=", 1) for p in signature_header.split(",") if "=" in p)
         ts, sig = parts.get("t"), parts.get("v0")
         if not ts or not sig:
             return False

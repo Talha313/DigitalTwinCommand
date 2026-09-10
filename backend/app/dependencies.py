@@ -28,9 +28,7 @@ def _extract_token(request: Request) -> str | None:
     return request.cookies.get(settings.auth_cookie_name)
 
 
-async def current_user(
-    request: Request, session: AsyncSession = Depends(db_session)
-) -> User:
+async def current_user(request: Request, session: AsyncSession = Depends(db_session)) -> User:
     token = _extract_token(request)
     if not token:
         raise AuthError("Not authenticated.")

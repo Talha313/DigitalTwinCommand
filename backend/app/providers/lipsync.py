@@ -1,5 +1,6 @@
 """Avatar / lip-sync video generation. Pluggable provider — HeyGen or D-ID —
 both consume the ElevenLabs PVC audio file and Howie's still photo."""
+
 from __future__ import annotations
 
 import asyncio

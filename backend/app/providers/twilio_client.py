@@ -1,5 +1,6 @@
 """Twilio Programmable Voice. Outbound calls stream media to our bridge over a
 Twilio <Stream>; the bridge relays to the ElevenLabs agent."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -34,7 +35,9 @@ class TwilioClient:
 
     # --- calls -----------------------------------------------------------
 
-    async def create_call(self, *, to: str, answer_url: str, status_callback: str) -> dict[str, Any]:
+    async def create_call(
+        self, *, to: str, answer_url: str, status_callback: str
+    ) -> dict[str, Any]:
         sid, token = self._auth()
         try:
             resp = await shared_client().post(

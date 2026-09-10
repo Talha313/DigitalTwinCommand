@@ -1,4 +1,5 @@
 """Integrations — configured third-party services (Twilio, ElevenLabs, xAI, ...)."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -22,6 +23,4 @@ class Integration(UUIDMixin, Base):
         default=IntegrationStatus.DISABLED,
     )
     configuration: Mapped[dict | None] = mapped_column(JSONB)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

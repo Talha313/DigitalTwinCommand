@@ -31,9 +31,7 @@ class AuditLogService(Service):
         return [AuditLogRead.model_validate(r) for r in rows]
 
     async def get(self, log_id: str) -> AuditLogRead:
-        return AuditLogRead.model_validate(
-            await self._get(AuditLog, log_id, label="Audit log")
-        )
+        return AuditLogRead.model_validate(await self._get(AuditLog, log_id, label="Audit log"))
 
 
 async def record(
