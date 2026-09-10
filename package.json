@@ -6,8 +6,9 @@
   "engines": { "node": ">=20" },
   "scripts": {
     "dev": "pnpm --filter @dtcc/web dev",
-    "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint"
+    "build": "pnpm --filter @dtcc/web build",
+    "start": "pnpm --filter @dtcc/web start",
+    "lint": "pnpm --filter @dtcc/web lint",
+    "typecheck": "pnpm --filter @dtcc/web typecheck"
   }
 }

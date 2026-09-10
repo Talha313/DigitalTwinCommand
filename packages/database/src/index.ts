@@ -1,1 +1,0 @@
-// export prisma client singleton
