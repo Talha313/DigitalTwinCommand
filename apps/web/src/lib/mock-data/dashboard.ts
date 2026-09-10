@@ -24,7 +24,7 @@ export const systemMetrics: SystemMetric[] = [
     id: "ai-model",
     label: "AI model",
     value: "Ready",
-    detail: "xAI Grok",
+    detail: "Anthropic Claude",
     state: "ready",
     tone: "positive",
   },

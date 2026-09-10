@@ -1,0 +1,56 @@
+name: dtcc
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: dtcc
+      POSTGRES_PASSWORD: dtcc
+      POSTGRES_DB: dtcc
+    ports: ["5432:5432"]
+    volumes: ["dtcc_pg:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dtcc"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: dtcc
+      MINIO_ROOT_PASSWORD: dtcc-secret
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["dtcc_minio:/data"]
+
+  api:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://dtcc:dtcc@db:5432/dtcc
+      REDIS_URL: redis://redis:6379/0
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+
+  worker:
+    build: .
+    command: uv run arq app.worker.main.WorkerSettings
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://dtcc:dtcc@db:5432/dtcc
+      REDIS_URL: redis://redis:6379/0
+      TZ: America/New_York
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+
+volumes:
+  dtcc_pg:
+  dtcc_minio:
