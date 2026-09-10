@@ -127,6 +127,9 @@ class RoleService(Service):
             await self.session.flush()
         except IntegrityError as exc:
             raise ConflictError("That role name is already taken.") from exc
+        # The secondary-table relationships were changed via Core statements;
+        # drop the stale collections so get_role reloads them.
+        self.session.expire(role, ["permissions", "tools"])
         return await self.get_role(role_id)
 
     async def _assert_refs(self, permission_ids: list[str], tool_ids: list[str]) -> None:

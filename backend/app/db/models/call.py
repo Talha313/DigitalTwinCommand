@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -29,7 +30,7 @@ if TYPE_CHECKING:
 class Call(UUIDMixin, Base):
     __tablename__ = "calls"
 
-    user_id: Mapped[str | None] = mapped_column(
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), index=True
     )
     twilio_sid: Mapped[str | None] = mapped_column(String(64), unique=True)
@@ -59,9 +60,16 @@ class Call(UUIDMixin, Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     utterances: Mapped[list[Utterance]] = relationship(
-        back_populates="call", order_by="Utterance.timestamp"
+        back_populates="call",
+        order_by="Utterance.timestamp",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
-    whispers: Mapped[list[Whisper]] = relationship(back_populates="call")
+    whispers: Mapped[list[Whisper]] = relationship(
+        back_populates="call",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class CallRole(UUIDMixin, Base):
@@ -70,5 +78,9 @@ class CallRole(UUIDMixin, Base):
     __tablename__ = "call_roles"
     __table_args__ = (UniqueConstraint("call_id", "role_id", name="uq_call_role"),)
 
-    call_id: Mapped[str] = mapped_column(ForeignKey("calls.id", ondelete="CASCADE"), index=True)
-    role_id: Mapped[str] = mapped_column(ForeignKey("ai_roles.id", ondelete="CASCADE"), index=True)
+    call_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("calls.id", ondelete="CASCADE"), index=True
+    )
+    role_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("ai_roles.id", ondelete="CASCADE"), index=True
+    )

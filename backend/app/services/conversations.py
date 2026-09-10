@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from fastapi import Depends
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -131,21 +133,21 @@ class ConversationService(Service):
         return [MessageRead.model_validate(r) for r in rows]
 
     async def add_message(
-        self, conversation_id: str, data: MessageCreate, *, role: MessageRole = MessageRole.USER
+        self,
+        conversation_id: str,
+        data: MessageCreate,
+        *,
+        role: MessageRole = MessageRole.USER,
     ) -> MessageRead:
-        await self._get(Conversation, conversation_id, label="Conversation")
-        msg = Message(
-            conversation_id=as_uuid(conversation_id),
-            role=role,
-            content=data.content,
-            meta=data.meta,
+        conv = await self._get(
+            Conversation,
+            conversation_id,
+            options=[selectinload(Conversation.messages)],
+            label="Conversation",
         )
-        self.session.add(msg)
-        await self.session.execute(
-            Conversation.__table__.update()
-            .where(Conversation.id == as_uuid(conversation_id))
-            .values(updated_at=func.now())
-        )
+        msg = Message(role=role, content=data.content, meta=data.meta)
+        conv.messages.append(msg)
+        conv.updated_at = datetime.now(UTC)
         await self.session.flush()
         return MessageRead.model_validate(msg)
 

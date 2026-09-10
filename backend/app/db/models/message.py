@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
 class Message(UUIDMixin, Base):
     __tablename__ = "messages"
 
-    conversation_id: Mapped[str] = mapped_column(
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("conversations.id", ondelete="CASCADE"), index=True
     )
     role: Mapped[MessageRole] = mapped_column(Enum(MessageRole, name="message_role"))

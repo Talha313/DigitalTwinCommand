@@ -59,4 +59,6 @@ ignore = ["B008"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-filterwarnings = ["ignore::DeprecationWarning"]
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+filterwarnings = ["ignore::DeprecationWarning", "ignore::RuntimeWarning"]

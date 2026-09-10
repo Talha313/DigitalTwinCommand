@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
@@ -46,6 +47,7 @@ def create_token(subject: str, token_type: TokenType, **claims: Any) -> str:
         "type": token_type,
         "iat": int(now.timestamp()),
         "exp": int(expires.timestamp()),
+        "jti": secrets.token_urlsafe(8),
         **claims,
     }
     return jwt.encode(payload, settings.session_secret, algorithm=_ALGORITHM)

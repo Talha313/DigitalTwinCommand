@@ -1,8 +1,8 @@
 """init schema
 
-Revision ID: 4ae01df99548
+Revision ID: cc9f4acfc8df
 Revises: 
-Create Date: 2026-09-10 21:57:07.255207
+Create Date: 2026-09-10 22:10:41.375232
 """
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = '4ae01df99548'
+revision: str = 'cc9f4acfc8df'
 down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

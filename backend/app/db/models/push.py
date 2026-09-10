@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, func
@@ -15,7 +16,7 @@ class PushSubscription(UUIDMixin, Base):
     __tablename__ = "push_subscriptions"
     __table_args__ = (UniqueConstraint("endpoint", name="uq_push_endpoint"),)
 
-    user_id: Mapped[str | None] = mapped_column(
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     endpoint: Mapped[str] = mapped_column(Text)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -18,7 +19,9 @@ if TYPE_CHECKING:
 class Utterance(UUIDMixin, Base):
     __tablename__ = "utterances"
 
-    call_id: Mapped[str] = mapped_column(ForeignKey("calls.id", ondelete="CASCADE"), index=True)
+    call_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("calls.id", ondelete="CASCADE"), index=True
+    )
     timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     speaker: Mapped[UtteranceSpeaker] = mapped_column(
         Enum(UtteranceSpeaker, name="utterance_speaker")

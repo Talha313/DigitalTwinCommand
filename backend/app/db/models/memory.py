@@ -3,6 +3,7 @@ platform (chats, calls, whispers, documents)."""
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, Enum, Float, ForeignKey, Text, func
@@ -15,7 +16,7 @@ from app.db.models.enums import MemorySourceType, MemoryStatus
 class Memory(UUIDMixin, Base):
     __tablename__ = "memories"
 
-    user_id: Mapped[str | None] = mapped_column(
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), index=True
     )
     content: Mapped[str] = mapped_column(Text)
