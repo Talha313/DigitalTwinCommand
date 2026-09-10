@@ -4,8 +4,8 @@
 
 The session owns the ElevenLabs conversation socket, so the operator can inject
 whispers (`contextual_update` / `user_message`), we get the live transcript, and
-we log every turn. The ElevenLabs agent MUST be configured with input/output
-audio format ``ulaw_8000`` so audio passes through without transcoding.
+we log every turn. Audio is transcoded to/from Twilio's μ-law 8 kHz based on the
+agent's configured format (set the agent to ``ulaw_8000`` to skip transcoding).
 """
 
 from __future__ import annotations
@@ -32,6 +32,7 @@ from app.db.models.utterance import Utterance
 from app.db.models.whisper import Whisper
 from app.db.session import session_scope
 from app.providers.elevenlabs import elevenlabs_client
+from app.realtime.audio import agent_to_twilio, twilio_to_agent
 from app.realtime.hub import hub
 from app.services.base import as_uuid
 from app.services.prompting import build_system_prompt
@@ -53,6 +54,8 @@ class CallSession:
         self._pump_task: asyncio.Task | None = None
         self._closing = False
         self.muted = False
+        self._to_agent = twilio_to_agent("ulaw_8000")
+        self._to_twilio = agent_to_twilio("ulaw_8000")
 
     # --- lifecycle -------------------------------------------------------
 
@@ -65,6 +68,37 @@ class CallSession:
         except Exception:
             log.exception("prompt build failed; using default")
             system = build_system_prompt([], channel="call")
+
+        # Learn the agent's audio format so we can transcode to/from Twilio's
+        # μ-law 8 kHz, and warn if prompt overrides are disabled (then the
+        # role-based system prompt below is ignored by ElevenLabs).
+        prompt_override_ok = True
+        try:
+            agent_cfg = await elevenlabs_client.agent()
+            cfg = agent_cfg.get("conversation_config", {})
+            in_fmt = cfg.get("asr", {}).get("user_input_audio_format")
+            out_fmt = cfg.get("tts", {}).get("agent_output_audio_format")
+            self._to_agent = twilio_to_agent(in_fmt)
+            self._to_twilio = agent_to_twilio(out_fmt)
+            if not (self._to_agent.passthrough and self._to_twilio.passthrough):
+                log.info("call %s transcoding audio: in=%s out=%s", self.call_id, in_fmt, out_fmt)
+            ov = (
+                agent_cfg.get("platform_settings", {})
+                .get("overrides", {})
+                .get("conversation_config_override", {})
+                .get("agent", {})
+                .get("prompt", {})
+            )
+            prompt_override_ok = bool(ov.get("prompt"))
+            if not prompt_override_ok:
+                log.warning(
+                    "call %s: ElevenLabs agent has prompt overrides disabled — the "
+                    "role-based system prompt will be ignored (enable in the agent's "
+                    "Security → Overrides settings). Whispers still work.",
+                    self.call_id,
+                )
+        except Exception:
+            log.warning("could not read agent config; assuming ulaw_8000 + overrides on")
 
         signed_url = await elevenlabs_client.get_signed_url()
         self.eleven_ws = await websockets.connect(signed_url, max_size=None)
@@ -107,8 +141,9 @@ class CallSession:
     async def on_twilio_media(self, payload_b64: str) -> None:
         if self.eleven_ws is None or self._closing or self.muted:
             return
+        chunk = self._to_agent.convert_b64(payload_b64)
         with contextlib.suppress(ConnectionClosed):
-            await self.eleven_ws.send(json.dumps({"user_audio_chunk": payload_b64}))
+            await self.eleven_ws.send(json.dumps({"user_audio_chunk": chunk}))
 
     async def on_twilio_stop(self) -> None:
         await self.close(reason="caller_hangup")
@@ -148,13 +183,14 @@ class CallSession:
         elif mtype == "audio":
             audio = msg.get("audio_event", {}).get("audio_base_64")
             if audio and self.twilio_ws is not None and self.stream_sid:
+                payload = self._to_twilio.convert_b64(audio)
                 with contextlib.suppress(Exception):
                     await self.twilio_ws.send_text(
                         json.dumps(
                             {
                                 "event": "media",
                                 "streamSid": self.stream_sid,
-                                "media": {"payload": audio},
+                                "media": {"payload": payload},
                             }
                         )
                     )
