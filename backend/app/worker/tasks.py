@@ -20,7 +20,11 @@ from app.db.session import session_scope
 from app.providers.anthropic_client import anthropic_client
 from app.services.base import as_uuid
 from app.services.push import notify_users
-from app.worker.report_pipeline import render, research_and_script
+from app.worker.report_pipeline import (
+    finalize_from_videos,
+    render,
+    research_and_script,
+)
 
 log = get_logger(__name__)
 
@@ -66,6 +70,27 @@ async def render_report(ctx: dict[str, Any], report_id: str) -> None:
     except Exception as exc:
         log.exception("report %s render failed", report_id)
         await _page_operators(report_id, f"Report render failed: {exc}")
+        return
+
+    async with session_scope() as session:
+        report = await session.get(Report, as_uuid(report_id))
+        status = report.status if report else None
+    if status == ReportStatus.AWAITING_AVATAR:
+        await _page_operators(
+            report_id,
+            "Daily report audio + captions are ready — render the avatar in "
+            "ElevenCreative and upload it (POST /api/reports/{id}/avatar).",
+        )
+    else:
+        await _page_operators(report_id, "Daily market report is ready.")
+
+
+async def package_report(ctx: dict[str, Any], report_id: str, raw_videos: dict[str, str]) -> None:
+    try:
+        await finalize_from_videos(report_id, raw_videos)
+    except Exception as exc:
+        log.exception("report %s packaging failed", report_id)
+        await _page_operators(report_id, f"Report packaging failed: {exc}")
         return
     await _page_operators(report_id, "Daily market report is ready.")
 

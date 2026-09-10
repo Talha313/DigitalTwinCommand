@@ -86,6 +86,7 @@ class ReportStatus(StrEnum):
     SCRIPT_READY = "script_ready"
     APPROVED = "approved"
     GENERATING = "generating"
+    AWAITING_AVATAR = "awaiting_avatar"  # audio ready; operator renders in ElevenCreative
     READY = "ready"
     FAILED = "failed"
 

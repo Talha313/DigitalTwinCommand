@@ -31,6 +31,8 @@ async def health() -> HealthResponse:
         call_llm=settings.elevenlabs_llm_label,
         chat_llm=settings.anthropic_chat_model,
         database=db_ok,
+        lipsync=f"{lipsync_client.provider}"
+        + ("" if lipsync_client.automated else " (manual upload)"),
         integrations={
             "anthropic": anthropic_client.configured,
             "elevenlabs": elevenlabs_client.configured,

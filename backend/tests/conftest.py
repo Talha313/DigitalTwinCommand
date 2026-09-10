@@ -15,12 +15,12 @@ os.environ.setdefault("DEBUG", "true")
 os.environ.setdefault("BOOTSTRAP_ADMIN_PASSWORD", "")
 os.environ.setdefault("SESSION_SECRET", "test-secret-0123456789abcdef0123456789")
 
-import pytest_asyncio  # noqa: E402
-from httpx import ASGITransport, AsyncClient  # noqa: E402
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 
-from app.db.base import Base  # noqa: E402
-from app.db.session import engine  # noqa: E402
-from app.main import create_app  # noqa: E402
+from app.db.base import Base
+from app.db.session import engine
+from app.main import create_app
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)

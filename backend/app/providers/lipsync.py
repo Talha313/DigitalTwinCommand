@@ -1,5 +1,12 @@
-"""Avatar / lip-sync video generation. Pluggable provider — HeyGen or D-ID —
-both consume the ElevenLabs PVC audio file and Howie's still photo."""
+"""Avatar / lip-sync video generation.
+
+heygen | did  — fully automated: submit a job, poll for the MP4.
+elevenlabs    — ElevenLabs Avatars has NO public video API (2026), so the
+                daily report pauses at AWAITING_AVATAR and an operator
+                renders in ElevenCreative and uploads via
+                POST /api/reports/{id}/avatar. `render()` is never called
+                for this provider; the pipeline branches before it.
+"""
 
 from __future__ import annotations
 
@@ -19,10 +26,18 @@ log = get_logger(__name__)
 class LipSyncClient:
     @property
     def provider(self) -> str:
-        return settings.lipsync_provider.lower()
+        return settings.lipsync_provider_norm
+
+    @property
+    def automated(self) -> bool:
+        """True when a report video can be produced without a human step."""
+        return self.provider in {"heygen", "did"} and self.configured
 
     @property
     def configured(self) -> bool:
+        if self.provider == "elevenlabs":
+            # No API to configure — an operator renders in ElevenCreative.
+            return True
         if self.provider == "heygen":
             return bool(settings.lipsync_api_key and settings.heygen_avatar_id)
         if self.provider == "did":

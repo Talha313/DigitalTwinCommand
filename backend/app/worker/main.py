@@ -10,6 +10,7 @@ from app.providers.http import close_shared_client
 from app.worker.queue import redis_settings
 from app.worker.tasks import (
     generate_report,
+    package_report,
     render_report,
     run_daily_report,
     summarize_call,
@@ -34,7 +35,13 @@ async def _shutdown(ctx: dict[str, Any]) -> None:
 
 class WorkerSettings:
     redis_settings = redis_settings()
-    functions = [generate_report, render_report, summarize_call, run_daily_report]
+    functions = [
+        generate_report,
+        render_report,
+        package_report,
+        summarize_call,
+        run_daily_report,
+    ]
     cron_jobs = [
         cron(
             run_daily_report,

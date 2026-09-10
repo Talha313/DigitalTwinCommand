@@ -80,10 +80,31 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @property
+    def public_base(self) -> str:
+        """The externally reachable base URL (what Twilio / ElevenLabs call).
+        Tolerates a comma-separated PUBLIC_HOST by preferring an https entry."""
+        parts = [p.strip().rstrip("/") for p in self.public_host.split(",") if p.strip()]
+        if not parts:
+            return "http://localhost:8000"
+        https = [p for p in parts if p.startswith("https://")]
+        return (https or parts)[0]
+
+    @property
     def ws_host(self) -> str:
         if self.public_ws_host:
-            return self.public_ws_host
-        return self.public_host.replace("http://", "ws://").replace("https://", "wss://")
+            return self.public_ws_host.rstrip("/")
+        return self.public_base.replace("https://", "wss://").replace("http://", "ws://")
+
+    @property
+    def lipsync_provider_norm(self) -> str:
+        """First real provider token from LIPSYNC_PROVIDER (tolerates the
+        'elevenlabs|did|heygen' placeholder from .env.example)."""
+        raw = self.lipsync_provider.strip().lower()
+        for token in raw.replace(",", "|").split("|"):
+            token = token.strip()
+            if token in {"elevenlabs", "did", "heygen"}:
+                return token
+        return "elevenlabs"
 
     @property
     def is_production(self) -> bool:

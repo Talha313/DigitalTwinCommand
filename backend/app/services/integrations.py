@@ -37,9 +37,25 @@ async def _probe(provider: str) -> tuple[bool, str]:
             if not elevenlabs_client.configured:
                 return False, "ELEVENLABS_API_KEY is not set."
             acct = await elevenlabs_client.account()
-            tier = acct.get("tier", "active")
-            agent = " · agent set" if elevenlabs_client.agent_configured else " · no agent id"
-            return True, f"Connected · {tier}{agent}"
+            sub = acct.get("subscription", {}) or {}
+            tier = sub.get("tier", "active")
+            detail = f"Connected · {tier}"
+            if elevenlabs_client.agent_configured:
+                try:
+                    ag = await elevenlabs_client.agent()
+                    name = ag.get("name", "agent")
+                    llm = (
+                        ag.get("conversation_config", {})
+                        .get("agent", {})
+                        .get("prompt", {})
+                        .get("llm", "?")
+                    )
+                    detail += f" · agent '{name}' (LLM {llm})"
+                except Exception:
+                    detail += " · agent id set (could not fetch agent)"
+            else:
+                detail += " · no ELEVENLABS_AGENT_ID"
+            return True, detail
         if p in {"anthropic", "claude"}:
             return (
                 (True, f"Key present · {settings.anthropic_chat_model}")
@@ -47,10 +63,17 @@ async def _probe(provider: str) -> tuple[bool, str]:
                 else (False, "ANTHROPIC_API_KEY is not set.")
             )
         if p in {"heygen", "did", "lipsync"}:
+            prov = lipsync_client.provider
+            if prov == "elevenlabs":
+                return (
+                    True,
+                    "Manual · avatar rendered in ElevenCreative, uploaded per report "
+                    "(no public video API)",
+                )
             return (
-                (True, f"Ready · {lipsync_client.provider}")
+                (True, f"Automated · {prov}")
                 if lipsync_client.configured
-                else (False, f"{lipsync_client.provider} not fully configured.")
+                else (False, f"{prov} not fully configured.")
             )
         if p in {"s3", "aws", "storage"}:
             if not storage.configured:

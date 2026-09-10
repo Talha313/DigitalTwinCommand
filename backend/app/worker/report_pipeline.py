@@ -136,13 +136,23 @@ async def research_and_script(report_id: str) -> ReportStatus:
     return ReportStatus.APPROVED
 
 
+def _report_key(report) -> str:
+    return f"reports/{report.date or report.id}"
+
+
 async def render(report_id: str) -> None:
-    """Stages 4-7: voice -> avatar -> package -> upload."""
+    """Stages 4-7: voice -> avatar -> package -> upload.
+
+    With ``LIPSYNC_PROVIDER=elevenlabs`` there is no public avatar-video API, so
+    the pipeline produces the audio + captions and then parks the report at
+    ``AWAITING_AVATAR`` for an operator to render in ElevenCreative and upload
+    via ``POST /api/reports/{id}/avatar``. ``heygen`` / ``did`` run end-to-end.
+    """
     await _set_status(report_id, ReportStatus.GENERATING)
     async with session_scope() as session:
         report = await session.get(Report, as_uuid(report_id))
         script = report.script or ""
-        report_key = f"reports/{report.date or report_id}"
+        report_key = _report_key(report)
     if not script:
         await _set_status(report_id, ReportStatus.FAILED, error="No script to render.")
         raise AppError("No script to render.")
@@ -152,42 +162,73 @@ async def render(report_id: str) -> None:
     audio = await elevenlabs_client.tts(script)
     audio_url = await storage.put(f"{report_key}/audio.mp3", audio, content_type="audio/mpeg")
     await _stage(report_id, ReportStage.VOICE, ReportJobStatus.COMPLETED)
-    async with session_scope() as session:
-        (await session.get(Report, as_uuid(report_id))).audio_url = audio_url
 
-    # rough duration estimate: ~150 wpm
-    total_seconds = max(60.0, len(script.split()) / 150 * 60)
+    total_seconds = max(60.0, len(script.split()) / 150 * 60)  # ~150 wpm
     srt_text = media.build_srt(script, total_seconds=total_seconds)
     captions_url = await storage.put(
         f"{report_key}/captions.srt", srt_text.encode(), content_type="text/plain"
     )
+    async with session_scope() as session:
+        report = await session.get(Report, as_uuid(report_id))
+        report.audio_url = audio_url
+        report.captions_url = captions_url
 
-    # --- avatar + package for both aspect ratios ---
+    # --- avatar ---
     await _stage(report_id, ReportStage.AVATAR, ReportJobStatus.RUNNING)
+    if lipsync_client.provider == "elevenlabs":
+        await _stage(
+            report_id,
+            ReportStage.AVATAR,
+            ReportJobStatus.RUNNING,
+            error="Awaiting manual render in ElevenCreative — audio + captions ready.",
+        )
+        await _set_status(report_id, ReportStatus.AWAITING_AVATAR)
+        log.info("report %s AWAITING_AVATAR (elevenlabs provider)", report_id)
+        return
+
     results: dict[str, str] = {}
     for aspect in ("16x9", "9x16"):
         raw_video_url = await lipsync_client.render(audio_url=audio_url, aspect=aspect)
-        await _stage(report_id, ReportStage.PROCESSING, ReportJobStatus.RUNNING)
+        results[aspect] = raw_video_url
+    await _stage(report_id, ReportStage.AVATAR, ReportJobStatus.COMPLETED)
+    await finalize_from_videos(report_id, results, srt_text=srt_text)
+
+
+async def finalize_from_videos(
+    report_id: str, raw_videos: dict[str, str], *, srt_text: str | None = None
+) -> None:
+    """Stages 5-7: ffmpeg package (captions + loudnorm) -> S3 -> READY.
+    ``raw_videos`` maps '16x9'/'9x16' to a downloadable source MP4 URL."""
+    async with session_scope() as session:
+        report = await session.get(Report, as_uuid(report_id))
+        report_key = _report_key(report)
+        script = report.script or ""
+        if srt_text is None:
+            total = max(60.0, len(script.split()) / 150 * 60)
+            srt_text = media.build_srt(script, total_seconds=total)
+
+    await _stage(report_id, ReportStage.PROCESSING, ReportJobStatus.RUNNING)
+    final: dict[str, str] = {}
+    for aspect, src in raw_videos.items():
+        if not src:
+            continue
         if media.ffmpeg_available():
-            packaged = await media.package(
-                video_url=raw_video_url, srt_text=srt_text, aspect=aspect
-            )
-            results[aspect] = await storage.put(
+            packaged = await media.package(video_url=src, srt_text=srt_text, aspect=aspect)
+            final[aspect] = await storage.put(
                 f"{report_key}/video_{aspect}.mp4", packaged, content_type="video/mp4"
             )
         else:
-            log.warning("ffmpeg not found — storing raw avatar video for %s", aspect)
-            results[aspect] = raw_video_url
-    await _stage(report_id, ReportStage.AVATAR, ReportJobStatus.COMPLETED)
+            log.warning("ffmpeg not found — storing source video for %s", aspect)
+            final[aspect] = src
     await _stage(report_id, ReportStage.PROCESSING, ReportJobStatus.COMPLETED)
 
-    # --- finalise ---
     await _stage(report_id, ReportStage.UPLOAD, ReportJobStatus.RUNNING)
     async with session_scope() as session:
         report = await session.get(Report, as_uuid(report_id))
-        report.captions_url = captions_url
-        report.video_16x9 = results.get("16x9")
-        report.video_9x16 = results.get("9x16")
+        if "16x9" in final:
+            report.video_16x9 = final["16x9"]
+        if "9x16" in final:
+            report.video_9x16 = final["9x16"]
         report.status = ReportStatus.READY
     await _stage(report_id, ReportStage.UPLOAD, ReportJobStatus.COMPLETED)
     log.info("report %s READY", report_id)

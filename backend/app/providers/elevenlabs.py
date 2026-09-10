@@ -64,7 +64,15 @@ class ElevenLabsClient:
         return resp.json()
 
     async def account(self) -> dict[str, Any]:
-        resp = await shared_client().get(f"{_BASE}/v1/user/subscription", headers=self._headers())
+        resp = await shared_client().get(f"{_BASE}/v1/user", headers=self._headers())
+        resp.raise_for_status()
+        return resp.json()
+
+    async def agent(self, agent_id: str | None = None) -> dict[str, Any]:
+        agent = agent_id or settings.elevenlabs_agent_id
+        resp = await shared_client().get(
+            f"{_BASE}/v1/convai/agents/{agent}", headers=self._headers()
+        )
         resp.raise_for_status()
         return resp.json()
 

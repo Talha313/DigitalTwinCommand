@@ -26,18 +26,29 @@ class ReportRead(ORMModel):
     status: ReportStatus
     brief_json: dict | None = None
     script: str | None = None
+    tool_traces: dict | None = None
+    error_message: str | None = None
     audio_url: str | None = None
     video_16x9: str | None = None
     video_9x16: str | None = None
     captions_url: str | None = None
     model: str | None = None
     cost_cents: int | None = None
+    approved_at: datetime | None = None
     created_at: datetime
 
 
 class ReportApproveResponse(BaseModel):
     id: str
     status: ReportStatus
+
+
+class ReportAvatarSubmit(BaseModel):
+    """Operator hands back the ElevenCreative render(s) as hosted URLs.
+    Alternatively upload the MP4 files directly to the multipart endpoint."""
+
+    video_16x9_url: str | None = None
+    video_9x16_url: str | None = None
 
 
 class ReportJobRead(ORMModel):

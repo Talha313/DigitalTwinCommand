@@ -50,3 +50,33 @@ async def test_integration_connection_test(auth_client: AsyncClient) -> None:
     r = await auth_client.post(f"/api/integrations/{twilio['id']}/test")
     assert r.status_code == 200
     assert r.json()["ok"] is False  # nothing configured in tests
+
+
+async def test_avatar_submit_requires_video(auth_client: AsyncClient) -> None:
+    from datetime import date
+
+    from app.db.models.enums import ReportStatus
+    from app.db.models.report import Report
+    from app.db.session import session_scope
+
+    async with session_scope() as session:
+        report = Report(date=date(2030, 1, 1), status=ReportStatus.AWAITING_AVATAR)
+        session.add(report)
+        await session.flush()
+        rid = str(report.id)
+
+    r = await auth_client.post(f"/api/reports/{rid}/avatar", data={})
+    assert r.status_code == 422
+
+    r = await auth_client.post(
+        f"/api/reports/{rid}/avatar",
+        data={"video_16x9_url": "https://example.com/report.mp4"},
+    )
+    assert r.status_code == 202
+    assert r.json()["status"] == "generating"
+
+
+async def test_health_reports_lipsync_provider(client: AsyncClient) -> None:
+    body = (await client.get("/api/health")).json()
+    assert "lipsync" in body
+    assert body["lipsync"].startswith("elevenlabs")

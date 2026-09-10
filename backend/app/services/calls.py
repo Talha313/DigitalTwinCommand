@@ -101,10 +101,10 @@ class CallService(Service):
             self.session.add(CallRole(call_id=call.id, role_id=as_uuid(rid)))
         await self.session.flush()
 
-        answer_url = f"{settings.public_host}/twilio/voice?call_id={call.id}"
+        answer_url = f"{settings.public_base}/twilio/voice?call_id={call.id}"
         if data.first_message:
             answer_url += f"&first_message={data.first_message}"
-        status_url = f"{settings.public_host}/twilio/status?call_id={call.id}"
+        status_url = f"{settings.public_base}/twilio/status?call_id={call.id}"
         try:
             result = await twilio_client.create_call(
                 to=data.to_e164, answer_url=answer_url, status_callback=status_url
@@ -147,12 +147,12 @@ class CallService(Service):
         if call.twilio_sid and twilio_client.configured:
             if held:
                 await twilio_client.redirect_to_hold(
-                    call.twilio_sid, f"{settings.public_host}/twilio/hold"
+                    call.twilio_sid, f"{settings.public_base}/twilio/hold"
                 )
             else:
                 await twilio_client.update_call(
                     call.twilio_sid,
-                    Url=f"{settings.public_host}/twilio/voice?call_id={call.id}",
+                    Url=f"{settings.public_base}/twilio/voice?call_id={call.id}",
                     Method="POST",
                 )
         return await self._read(call)

@@ -1,8 +1,8 @@
 """init schema
 
-Revision ID: cc9f4acfc8df
+Revision ID: ce0203f62818
 Revises: 
-Create Date: 2026-09-10 22:10:41.375232
+Create Date: 2026-09-11 00:19:36.482286
 """
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision: str = 'cc9f4acfc8df'
+revision: str = 'ce0203f62818'
 down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -188,7 +188,7 @@ def upgrade() -> None:
     op.create_index(op.f('ix_refresh_sessions_user_id'), 'refresh_sessions', ['user_id'], unique=False)
     op.create_table('reports',
     sa.Column('date', sa.Date(), nullable=True),
-    sa.Column('status', sa.Enum('QUEUED', 'RESEARCHING', 'SCRIPT_READY', 'APPROVED', 'GENERATING', 'READY', 'FAILED', name='report_status'), nullable=False),
+    sa.Column('status', sa.Enum('QUEUED', 'RESEARCHING', 'SCRIPT_READY', 'APPROVED', 'GENERATING', 'AWAITING_AVATAR', 'READY', 'FAILED', name='report_status'), nullable=False),
     sa.Column('brief_json', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('script', sa.Text(), nullable=True),
     sa.Column('tool_traces', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
