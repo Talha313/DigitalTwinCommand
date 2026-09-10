@@ -18,6 +18,7 @@ from app.routers import (
     grades,
     health,
     integrations,
+    media,
     memories,
     push,
     reports,
@@ -49,6 +50,7 @@ for _module in (
 webhook_router = APIRouter()
 webhook_router.include_router(telephony.router)
 webhook_router.include_router(webhooks.router)
+webhook_router.include_router(media.router)
 
 ws_router = APIRouter()
 ws_router.include_router(ws.router)

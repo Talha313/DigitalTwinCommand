@@ -76,10 +76,15 @@ async def _probe(provider: str) -> tuple[bool, str]:
                 else (False, f"{prov} not fully configured.")
             )
         if p in {"s3", "aws", "storage"}:
-            if not storage.configured:
-                return False, "No bucket configured."
             ok = await storage.health()
-            return (ok, "Bucket reachable." if ok else "Bucket not reachable.")
+            if storage.backend == "local":
+                return (
+                    ok,
+                    f"Local disk ({settings.storage_dir})"
+                    if ok
+                    else "Local storage dir not writable.",
+                )
+            return ok, "Bucket reachable." if ok else "Bucket not reachable."
         if p in {"push", "webpush"}:
             return (
                 (True, "VAPID keys present.")

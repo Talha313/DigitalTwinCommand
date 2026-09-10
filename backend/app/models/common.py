@@ -14,5 +14,6 @@ class HealthResponse(BaseModel):
     call_llm: str
     chat_llm: str
     lipsync: str
+    storage: str
     database: bool
     integrations: dict[str, bool]

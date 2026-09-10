@@ -33,13 +33,14 @@ async def health() -> HealthResponse:
         database=db_ok,
         lipsync=f"{lipsync_client.provider}"
         + ("" if lipsync_client.automated else " (manual upload)"),
+        storage=storage.backend,
         integrations={
             "anthropic": anthropic_client.configured,
             "elevenlabs": elevenlabs_client.configured,
             "elevenlabs_agent": elevenlabs_client.agent_configured,
             "twilio": twilio_client.configured,
             "lipsync": lipsync_client.configured,
-            "storage": storage.configured,
+            "storage": await storage.health(),
             "push": push_client.configured,
         },
     )

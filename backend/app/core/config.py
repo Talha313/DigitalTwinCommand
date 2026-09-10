@@ -55,7 +55,10 @@ class Settings(BaseSettings):
     heygen_avatar_id: str = ""
     did_source_url: str = ""  # public URL of Howie's photo for D-ID
 
-    # --- Storage (S3 / MinIO compatible) -----------------------------------
+    # --- Storage --------------------------------------------------------
+    # Leave S3_BUCKET empty to store on local disk under STORAGE_DIR, served
+    # by GET /media/{path}. Set S3_BUCKET to switch to S3 / MinIO.
+    storage_dir: str = "var/storage"
     s3_bucket: str = ""
     s3_region: str = "us-east-1"
     s3_endpoint_url: str = ""  # set for MinIO / non-AWS
