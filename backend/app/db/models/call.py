@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     Enum,
     ForeignKey,
@@ -46,8 +47,17 @@ class Call(UUIDMixin, Base):
         Enum(CallOutcome, name="call_outcome")
     )
     recording_url: Mapped[str | None] = mapped_column(Text)
+    recording_consent: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Denormalised review metadata (filled when the call ends).
+    model: Mapped[str | None] = mapped_column(String(120))
+    summary: Mapped[str | None] = mapped_column(Text)
+    tool_call_count: Mapped[int] = mapped_column(Integer, default=0)
+    cost_cents: Mapped[int | None] = mapped_column(Integer)
+
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), index=True
+    )
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     duration_seconds: Mapped[int | None] = mapped_column(Integer)
 

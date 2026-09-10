@@ -23,12 +23,19 @@ from app.db.models.enums import ReportJobStatus, ReportStage, ReportStatus
 class Report(UUIDMixin, Base):
     __tablename__ = "reports"
 
-    date: Mapped[date | None] = mapped_column(Date)
+    date: Mapped[date | None] = mapped_column(Date, unique=True, index=True)
     status: Mapped[ReportStatus] = mapped_column(
         Enum(ReportStatus, name="report_status"), default=ReportStatus.QUEUED
     )
     brief_json: Mapped[dict | None] = mapped_column(JSONB)
     script: Mapped[str | None] = mapped_column(Text)
+    tool_traces: Mapped[dict | None] = mapped_column(JSONB)
+    error_message: Mapped[str | None] = mapped_column(Text)
+
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    approved_by: Mapped[str | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
 
     audio_url: Mapped[str | None] = mapped_column(Text)
     video_16x9: Mapped[str | None] = mapped_column(Text)

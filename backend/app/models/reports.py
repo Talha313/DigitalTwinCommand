@@ -1,7 +1,7 @@
 """DTOs for the reports resource."""
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date as _date, datetime
 
 from pydantic import BaseModel, ConfigDict
 
@@ -14,7 +14,7 @@ class ReportListItem(BaseModel):
     model_config = _orm
 
     id: str
-    date: date | None = None
+    date: _date | None = None
     status: ReportStatus
     model: str | None = None
     cost_cents: int | None = None
@@ -25,7 +25,7 @@ class ReportRead(BaseModel):
     model_config = _orm
 
     id: str
-    date: date | None = None
+    date: _date | None = None
     status: ReportStatus
     brief_json: dict | None = None
     script: str | None = None

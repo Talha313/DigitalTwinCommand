@@ -30,10 +30,14 @@ class CallDirection(StrEnum):
 
 
 class CallStatus(StrEnum):
+    QUEUED = "queued"
     RINGING = "ringing"
+    IN_PROGRESS = "in_progress"
     CONNECTED = "connected"
     COMPLETED = "completed"
     FAILED = "failed"
+    NO_ANSWER = "no_answer"
+    CANCELED = "canceled"
 
 
 class CallOutcome(StrEnum):
@@ -52,7 +56,7 @@ class UtteranceSpeaker(StrEnum):
 class UtteranceSource(StrEnum):
     TWILIO = "twilio"
     ELEVENLABS = "elevenlabs"
-    GROK = "grok"
+    LLM = "llm"
     OPERATOR = "operator"
 
 
@@ -61,6 +65,13 @@ class WhisperStatus(StrEnum):
     INJECTED = "injected"
     SPOKEN = "spoken"
     FAILED = "failed"
+
+
+class WhisperKind(StrEnum):
+    """How the whisper is delivered to the ElevenLabs conversation."""
+
+    CONTEXTUAL_UPDATE = "contextual_update"  # non-interrupting operator note
+    USER_MESSAGE = "user_message"  # forces a turn / barge-in
 
 
 class IntegrationStatus(StrEnum):
