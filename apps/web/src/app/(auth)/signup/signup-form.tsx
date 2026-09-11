@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import {
   AuthAlert,
@@ -12,10 +13,13 @@ import {
   SubmitButton,
 } from "@/components/auth";
 import { useAuthForm } from "@/hooks/use-auth-form";
+import { signup } from "@/lib/auth";
 import { signupSchema } from "@/lib/validations/auth";
 
 export function SignupForm() {
-  const { values, errors, formError, status, isSubmitting, setField, handleSubmit } =
+  const router = useRouter();
+
+  const { values, errors, formError, isSubmitting, setField, handleSubmit } =
     useAuthForm({
       initialValues: {
         name: "",
@@ -24,8 +28,16 @@ export function SignupForm() {
         confirmPassword: "",
       },
       schema: signupSchema,
-      onSubmit: async () => {
-        await new Promise((resolve) => setTimeout(resolve, 900));
+      onSubmit: async (data) => {
+        const [first, ...rest] = data.name.trim().split(/\s+/);
+        await signup({
+          email: data.email,
+          password: data.password,
+          first_name: first || undefined,
+          last_name: rest.join(" ") || undefined,
+        });
+        router.push("/dashboard");
+        router.refresh();
       },
     });
 
@@ -35,13 +47,6 @@ export function SignupForm() {
         title="Create your account"
         subtitle="Set up operator access to the command center."
       />
-
-      {status === "success" ? (
-        <AuthAlert variant="info" title="UI preview">
-          Account creation isn&apos;t connected yet — this screen validates input
-          and exercises form state only.
-        </AuthAlert>
-      ) : null}
 
       {formError ? (
         <AuthAlert variant="error" title="Unable to create account">

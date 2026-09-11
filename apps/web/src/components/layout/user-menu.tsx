@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogOut, Settings as SettingsIcon, UserRound } from "lucide-react";
@@ -14,16 +15,47 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { getStoredUser, logout, type AuthUser } from "@/lib/auth";
 
-const MOCK_USER = {
-  name: "Alex Morgan",
-  email: "alex@digitaltwin.ai",
+const FALLBACK = {
+  name: "Operator",
+  email: "",
   role: "Operator",
-  initials: "AM",
+  initials: "OP",
 };
+
+function toDisplay(user: AuthUser | null): typeof FALLBACK {
+  if (!user) return FALLBACK;
+  const full = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
+  const name = full || user.email.split("@")[0] || FALLBACK.name;
+  const initials =
+    (full
+      ? full
+          .split(/\s+/)
+          .map((part) => part[0])
+          .slice(0, 2)
+          .join("")
+      : name.slice(0, 2)
+    ).toUpperCase() || FALLBACK.initials;
+  const role = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+  return { name, email: user.email, role, initials };
+}
 
 export function UserMenu() {
   const router = useRouter();
+  const [user, setUser] = React.useState<AuthUser | null>(null);
+
+  React.useEffect(() => {
+    setUser(getStoredUser());
+  }, []);
+
+  const display = toDisplay(user);
+
+  async function handleSignOut() {
+    await logout();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <DropdownMenu>
@@ -34,26 +66,26 @@ export function UserMenu() {
           aria-label="Open user menu"
         >
           <Avatar className="h-8 w-8">
-            <AvatarFallback>{MOCK_USER.initials}</AvatarFallback>
+            <AvatarFallback>{display.initials}</AvatarFallback>
           </Avatar>
           <span className="hidden text-left leading-tight sm:flex sm:flex-col">
             <span className="text-sm font-medium text-foreground">
-              {MOCK_USER.name}
+              {display.name}
             </span>
-            <span className="text-xs text-muted-foreground">
-              {MOCK_USER.role}
-            </span>
+            <span className="text-xs text-muted-foreground">{display.role}</span>
           </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">
           <span className="block text-sm font-medium text-foreground">
-            {MOCK_USER.name}
+            {display.name}
           </span>
-          <span className="block truncate text-xs text-muted-foreground">
-            {MOCK_USER.email}
-          </span>
+          {display.email ? (
+            <span className="block truncate text-xs text-muted-foreground">
+              {display.email}
+            </span>
+          ) : null}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
@@ -70,7 +102,9 @@ export function UserMenu() {
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onSelect={() => router.push("/login")}
+          onSelect={() => {
+            void handleSignOut();
+          }}
           className="text-destructive focus:text-destructive"
         >
           <LogOut />
