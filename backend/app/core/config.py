@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     anthropic_grader_model: str = "claude-haiku-4-5-20251001"
     anthropic_max_tokens: int = 4096
 
+    # --- xAI Grok (optional — daily-report X/Twitter research only; the live
+    # phone agent's search tool is configured directly in ElevenLabs, not here) --
+    xai_api_key: str = ""
+    xai_model: str = "grok-4.6"
+
     # --- ElevenLabs -------------------------------------------------------------
     elevenlabs_api_key: str = ""
     elevenlabs_agent_id: str = ""

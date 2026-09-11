@@ -21,6 +21,7 @@ from app.providers.anthropic_client import anthropic_client
 from app.providers.elevenlabs import elevenlabs_client
 from app.providers.lipsync import lipsync_client
 from app.providers.storage import storage
+from app.providers.xai_client import xai_client
 from app.services import media
 from app.services.base import as_uuid
 
@@ -115,12 +116,29 @@ async def research_and_script(report_id: str) -> ReportStatus:
         await _stage(report_id, ReportStage.RESEARCH, ReportJobStatus.FAILED, error=exc.message)
         await _set_status(report_id, ReportStatus.FAILED, error=exc.message)
         raise
+
+    # X/Twitter headlines — optional enrichment Claude's web_search can't
+    # reach. Never fails the report; if xAI is unset or errors, the brief
+    # just goes out without it.
+    x_search_trace: dict | None = None
+    if xai_client.configured:
+        try:
+            x_res = await xai_client.x_search(
+                "What is being said on X/Twitter today about markets, stocks, "
+                "rates, and the economy? Summarize the most notable posts."
+            )
+            if x_res["text"]:
+                brief["social_headlines"] = x_res["text"]
+                x_search_trace = {"citations": x_res["citations"], "model": x_res.get("model")}
+        except AppError:
+            log.warning("report %s: xAI x_search enrichment failed, continuing without it", report_id)
+
     async with session_scope() as session:
         report = await session.get(Report, as_uuid(report_id))
         if report is None:
             raise ReportGone(f"Report {report_id} no longer exists.")
         report.brief_json = brief
-        report.tool_traces = {"research": res.get("tool_traces", [])}
+        report.tool_traces = {"research": res.get("tool_traces", []), "x_search": x_search_trace}
         report.model = res.get("model")
     await _stage(report_id, ReportStage.RESEARCH, ReportJobStatus.COMPLETED)
 
