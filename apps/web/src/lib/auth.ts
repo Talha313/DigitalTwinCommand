@@ -33,7 +33,19 @@ interface ForgotPasswordResponse {
 
 const USER_KEY = "dtcc.user";
 
+/**
+ * The access token, held in memory only (never persisted) — needed just for
+ * the live-call WebSocket, which can't send the httpOnly session cookie on
+ * its upgrade request and so authenticates via `?token=`.
+ */
+let accessToken: string | null = null;
+
+export function getAccessToken(): string | null {
+  return accessToken;
+}
+
 function persistSession(res: SessionResponse): AuthUser {
+  accessToken = res.access_token;
   try {
     window.localStorage.setItem(USER_KEY, JSON.stringify(res.user));
   } catch {
@@ -56,11 +68,20 @@ export function isAuthenticated(): boolean {
 }
 
 export function clearSession(): void {
+  accessToken = null;
   try {
     window.localStorage.removeItem(USER_KEY);
   } catch {
     /* storage unavailable */
   }
+}
+
+/** Rotates the session cookies + in-memory access token. */
+export async function refresh(): Promise<AuthUser> {
+  const res = await apiFetch<SessionResponse>("/api/auth/refresh", {
+    method: "POST",
+  });
+  return persistSession(res);
 }
 
 export async function signup(input: {
