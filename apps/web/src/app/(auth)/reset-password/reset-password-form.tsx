@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 import {
   AuthAlert,
@@ -11,17 +12,36 @@ import {
   SubmitButton,
 } from "@/components/auth";
 import { useAuthForm } from "@/hooks/use-auth-form";
+import { resetPassword } from "@/lib/auth";
 import { resetPasswordSchema } from "@/lib/validations/auth";
 
 export function ResetPasswordForm() {
+  const token = useSearchParams().get("token");
+
   const { values, errors, formError, status, isSubmitting, setField, handleSubmit } =
     useAuthForm({
       initialValues: { password: "", confirmPassword: "" },
       schema: resetPasswordSchema,
-      onSubmit: async () => {
-        await new Promise((resolve) => setTimeout(resolve, 900));
+      onSubmit: async (data) => {
+        await resetPassword({ token: token ?? "", password: data.password });
       },
     });
+
+  if (!token) {
+    return (
+      <AuthCard>
+        <AuthHeader
+          title="Invalid reset link"
+          subtitle="This link is missing its token. Request a new one."
+        />
+        <AuthFooter className="border-t-0 pt-0">
+          <Link href="/forgot-password" className="auth-link">
+            Request a new reset link
+          </Link>
+        </AuthFooter>
+      </AuthCard>
+    );
+  }
 
   if (status === "success") {
     return (
@@ -30,9 +50,8 @@ export function ResetPasswordForm() {
           title="Password updated"
           subtitle="You can now sign in with your new password."
         />
-        <AuthAlert variant="success" title="UI preview">
-          No password was actually changed — this screen is not connected to the
-          backend yet.
+        <AuthAlert variant="success" title="Done">
+          Your password has been reset.
         </AuthAlert>
         <AuthFooter className="border-t-0 pt-0">
           <Link href="/login" className="auth-link">
@@ -49,10 +68,6 @@ export function ResetPasswordForm() {
         title="Set a new password"
         subtitle="Choose a strong password you don't use elsewhere."
       />
-
-      <AuthAlert variant="info">
-        Your reset link token would be validated here before the form is shown.
-      </AuthAlert>
 
       {formError ? (
         <AuthAlert variant="error" title="Unable to reset password">
