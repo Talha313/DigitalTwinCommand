@@ -1,11 +1,12 @@
 """DTOs for the grades resource."""
+
 from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
-_orm = ConfigDict(from_attributes=True)
+from app.models.base import ORMModel
 
 
 class GradeCreate(BaseModel):
@@ -16,9 +17,7 @@ class GradeCreate(BaseModel):
     grader_model: str | None = None
 
 
-class GradeRead(BaseModel):
-    model_config = _orm
-
+class GradeRead(ORMModel):
     id: str
     subject_type: str
     subject_id: str

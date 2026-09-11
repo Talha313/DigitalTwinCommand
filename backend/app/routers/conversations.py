@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Response
 
+from app.db.models.user import User
+from app.dependencies import current_user
 from app.models.conversations import (
     ConversationCreate,
     ConversationListItem,
@@ -18,22 +20,25 @@ router = APIRouter(prefix="/conversations", tags=["conversations"])
 
 @router.get("", response_model=list[ConversationListItem])
 async def list_conversations(
+    user: User = Depends(current_user),
     service: ConversationService = Depends(get_conversations_service),
 ) -> list[ConversationListItem]:
-    return await service.list_conversations()
+    return await service.list_conversations(user_id=str(user.id))
 
 
 @router.post("", response_model=ConversationRead, status_code=201)
 async def create_conversation(
     body: ConversationCreate,
+    user: User = Depends(current_user),
     service: ConversationService = Depends(get_conversations_service),
 ) -> ConversationRead:
-    return await service.create(body)
+    return await service.create(body, user_id=str(user.id))
 
 
 @router.get("/{conversation_id}", response_model=ConversationRead)
 async def get_conversation(
     conversation_id: str,
+    _: User = Depends(current_user),
     service: ConversationService = Depends(get_conversations_service),
 ) -> ConversationRead:
     return await service.get(conversation_id)
@@ -43,6 +48,7 @@ async def get_conversation(
 async def update_conversation(
     conversation_id: str,
     body: ConversationUpdate,
+    _: User = Depends(current_user),
     service: ConversationService = Depends(get_conversations_service),
 ) -> ConversationRead:
     return await service.update(conversation_id, body)
@@ -51,6 +57,7 @@ async def update_conversation(
 @router.delete("/{conversation_id}", status_code=204)
 async def delete_conversation(
     conversation_id: str,
+    _: User = Depends(current_user),
     service: ConversationService = Depends(get_conversations_service),
 ) -> Response:
     await service.delete(conversation_id)
@@ -61,17 +68,16 @@ async def delete_conversation(
 async def set_conversation_roles(
     conversation_id: str,
     body: ConversationRolesUpdate,
+    _: User = Depends(current_user),
     service: ConversationService = Depends(get_conversations_service),
 ) -> ConversationRead:
     return await service.set_roles(conversation_id, body)
 
 
-# --- messages ---
-
-
 @router.get("/{conversation_id}/messages", response_model=list[MessageRead])
 async def list_messages(
     conversation_id: str,
+    _: User = Depends(current_user),
     service: ConversationService = Depends(get_conversations_service),
 ) -> list[MessageRead]:
     return await service.list_messages(conversation_id)
@@ -81,6 +87,7 @@ async def list_messages(
 async def post_message(
     conversation_id: str,
     body: MessageCreate,
+    _: User = Depends(current_user),
     service: ConversationService = Depends(get_conversations_service),
 ) -> MessageRead:
     return await service.add_message(conversation_id, body)

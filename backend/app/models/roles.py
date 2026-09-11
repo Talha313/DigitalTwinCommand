@@ -1,20 +1,17 @@
 """DTOs for all role-related resources: roles, permissions, tools, and the
 role ↔ permission / role ↔ tool grants."""
+
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from app.db.models.enums import RiskLevel
-
-_orm = ConfigDict(from_attributes=True)
-
+from app.models.base import ORMModel
 
 # --- permissions ---------------------------------------------------------------
 
 
-class PermissionRead(BaseModel):
-    model_config = _orm
-
+class PermissionRead(ORMModel):
     id: str
     name: str  # e.g. "portfolio.read"
     description: str | None = None
@@ -28,9 +25,7 @@ class PermissionCreate(BaseModel):
 # --- tools / API access ------------------------------------------------------
 
 
-class ToolRead(BaseModel):
-    model_config = _orm
-
+class ToolRead(ORMModel):
     id: str
     name: str
     provider: str | None = None
@@ -43,10 +38,8 @@ class ToolCreate(BaseModel):
     description: str | None = None
 
 
-class RoleToolAccess(BaseModel):
+class RoleToolAccess(ORMModel):
     """A tool granted to a role, with its enabled flag (role_tools row)."""
-
-    model_config = _orm
 
     tool: ToolRead
     enabled: bool = True
@@ -80,9 +73,7 @@ class RoleUpdate(BaseModel):
     tool_ids: list[str] | None = None
 
 
-class RoleRead(RoleBase):
-    model_config = _orm
-
+class RoleRead(RoleBase, ORMModel):
     id: str
     permissions: list[PermissionRead] = []
     tools: list[RoleToolAccess] = []

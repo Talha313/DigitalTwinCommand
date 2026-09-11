@@ -1,7 +1,9 @@
 """All role-related tables: ai_roles, permissions, tools, and the
 role_permissions / role_tools mapping tables."""
+
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 
 from sqlalchemy import (
@@ -45,9 +47,7 @@ class Tool(UUIDMixin, TimestampMixin, Base):
     provider: Mapped[str | None] = mapped_column(String(120))
     description: Mapped[str | None] = mapped_column(Text)
 
-    roles: Mapped[list[Role]] = relationship(
-        secondary="role_tools", back_populates="tools"
-    )
+    roles: Mapped[list[Role]] = relationship(secondary="role_tools", back_populates="tools")
 
 
 class Role(UUIDMixin, TimestampMixin, Base):
@@ -65,28 +65,22 @@ class Role(UUIDMixin, TimestampMixin, Base):
     permissions: Mapped[list[Permission]] = relationship(
         secondary="role_permissions", back_populates="roles"
     )
-    tools: Mapped[list[Tool]] = relationship(
-        secondary="role_tools", back_populates="roles"
-    )
+    tools: Mapped[list[Tool]] = relationship(secondary="role_tools", back_populates="roles")
 
 
 class RolePermission(UUIDMixin, Base):
     """Role ↔ Permission mapping."""
 
     __tablename__ = "role_permissions"
-    __table_args__ = (
-        UniqueConstraint("role_id", "permission_id", name="uq_role_permission"),
-    )
+    __table_args__ = (UniqueConstraint("role_id", "permission_id", name="uq_role_permission"),)
 
-    role_id: Mapped[str] = mapped_column(
+    role_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("ai_roles.id", ondelete="CASCADE"), index=True
     )
-    permission_id: Mapped[str] = mapped_column(
+    permission_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("permissions.id", ondelete="CASCADE"), index=True
     )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class RoleTool(UUIDMixin, Base):
@@ -95,10 +89,10 @@ class RoleTool(UUIDMixin, Base):
     __tablename__ = "role_tools"
     __table_args__ = (UniqueConstraint("role_id", "tool_id", name="uq_role_tool"),)
 
-    role_id: Mapped[str] = mapped_column(
+    role_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("ai_roles.id", ondelete="CASCADE"), index=True
     )
-    tool_id: Mapped[str] = mapped_column(
+    tool_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("tools.id", ondelete="CASCADE"), index=True
     )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)

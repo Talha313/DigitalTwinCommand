@@ -1,16 +1,13 @@
 """DTOs for the audit-log resource (read-only)."""
+
 from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
-
-_orm = ConfigDict(from_attributes=True)
+from app.models.base import ORMModel
 
 
-class AuditLogRead(BaseModel):
-    model_config = _orm
-
+class AuditLogRead(ORMModel):
     id: str
     user_id: str | None = None
     action: str

@@ -10,4 +10,10 @@ class Problem(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
-    model: str
+    environment: str
+    call_llm: str
+    chat_llm: str
+    lipsync: str
+    storage: str
+    database: bool
+    integrations: dict[str, bool]

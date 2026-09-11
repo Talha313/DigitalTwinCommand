@@ -1,6 +1,8 @@
 """Report-related tables: reports and report_jobs (pipeline stages)."""
+
 from __future__ import annotations
 
+import uuid
 from datetime import date, datetime
 
 from sqlalchemy import (
@@ -23,12 +25,19 @@ from app.db.models.enums import ReportJobStatus, ReportStage, ReportStatus
 class Report(UUIDMixin, Base):
     __tablename__ = "reports"
 
-    date: Mapped[date | None] = mapped_column(Date)
+    date: Mapped[date | None] = mapped_column(Date, unique=True, index=True)
     status: Mapped[ReportStatus] = mapped_column(
         Enum(ReportStatus, name="report_status"), default=ReportStatus.QUEUED
     )
     brief_json: Mapped[dict | None] = mapped_column(JSONB)
     script: Mapped[str | None] = mapped_column(Text)
+    tool_traces: Mapped[dict | None] = mapped_column(JSONB)
+    error_message: Mapped[str | None] = mapped_column(Text)
+
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    approved_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
 
     audio_url: Mapped[str | None] = mapped_column(Text)
     video_16x9: Mapped[str | None] = mapped_column(Text)
@@ -38,12 +47,13 @@ class Report(UUIDMixin, Base):
     model: Mapped[str | None] = mapped_column(String(64))
     cost_cents: Mapped[int | None] = mapped_column(Integer)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     jobs: Mapped[list[ReportJob]] = relationship(
-        back_populates="report", order_by="ReportJob.started_at"
+        back_populates="report",
+        order_by="ReportJob.started_at",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
 
@@ -52,7 +62,7 @@ class ReportJob(UUIDMixin, Base):
 
     __tablename__ = "report_jobs"
 
-    report_id: Mapped[str] = mapped_column(
+    report_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("reports.id", ondelete="CASCADE"), index=True
     )
     stage: Mapped[ReportStage] = mapped_column(Enum(ReportStage, name="report_stage"))

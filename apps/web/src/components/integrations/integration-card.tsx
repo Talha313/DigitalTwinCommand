@@ -19,7 +19,7 @@ import { IntegrationStatus } from "./integration-status";
 const ICON: Record<string, LucideIcon> = {
   twilio: Phone,
   elevenlabs: Waves,
-  xai: Sparkles,
+  anthropic: Sparkles,
   heygen: Clapperboard,
   s3: Database,
 };

@@ -1,7 +1,9 @@
 """Memories — the knowledge store / future-training data collected from the
 platform (chats, calls, whispers, documents)."""
+
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, Enum, Float, ForeignKey, Text, func
@@ -14,7 +16,7 @@ from app.db.models.enums import MemorySourceType, MemoryStatus
 class Memory(UUIDMixin, Base):
     __tablename__ = "memories"
 
-    user_id: Mapped[str | None] = mapped_column(
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), index=True
     )
     content: Mapped[str] = mapped_column(Text)
@@ -25,6 +27,4 @@ class Memory(UUIDMixin, Base):
     status: Mapped[MemoryStatus] = mapped_column(
         Enum(MemoryStatus, name="memory_status"), default=MemoryStatus.PENDING
     )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

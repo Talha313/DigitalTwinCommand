@@ -1,6 +1,8 @@
 """Utterances — the live-call transcript (one row per final utterance)."""
+
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -17,7 +19,7 @@ if TYPE_CHECKING:
 class Utterance(UUIDMixin, Base):
     __tablename__ = "utterances"
 
-    call_id: Mapped[str] = mapped_column(
+    call_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("calls.id", ondelete="CASCADE"), index=True
     )
     timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -28,8 +30,6 @@ class Utterance(UUIDMixin, Base):
     source: Mapped[UtteranceSource | None] = mapped_column(
         Enum(UtteranceSource, name="utterance_source")
     )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     call: Mapped[Call] = relationship(back_populates="utterances")

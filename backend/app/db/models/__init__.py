@@ -2,12 +2,14 @@
 ``Base.metadata`` (used by Alembic autogenerate)."""
 
 from app.db.models.audit_log import AuditLog
+from app.db.models.auth_token import PasswordResetToken, RefreshSession
 from app.db.models.call import Call, CallRole
 from app.db.models.conversation import Conversation
 from app.db.models.grade import Grade
 from app.db.models.integration import Integration
 from app.db.models.memory import Memory
 from app.db.models.message import Message
+from app.db.models.push import PushSubscription
 from app.db.models.report import Report, ReportJob
 from app.db.models.role import (
     Permission,
@@ -30,7 +32,10 @@ __all__ = [
     "Integration",
     "Memory",
     "Message",
+    "PasswordResetToken",
     "Permission",
+    "PushSubscription",
+    "RefreshSession",
     "Report",
     "ReportJob",
     "Role",

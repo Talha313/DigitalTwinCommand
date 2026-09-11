@@ -13,10 +13,28 @@ dependencies = [
   "asyncpg>=0.30.0",
   "httpx>=0.27.0",
   "python-multipart>=0.0.12",
+  "anthropic>=1.4.0",
+  "websockets>=17.1",
+  "argon2-cffi>=25.1.0",
+  "pyjwt>=2.13.0",
+  "slowapi>=0.1.10",
+  "boto3>=1.43.91",
+  "arq>=0.28.0",
+  "redis>=5.3.1",
+  "pywebpush>=2.5.0",
+  "twilio>=9.11.1",
+  "python-json-logger>=4.2.0",
+  "audioop-lts>=0.2.2 ; python_full_version >= '3.13'",
 ]
 
 [dependency-groups]
-dev = ["pytest>=8.3.0", "pytest-asyncio>=0.24.0", "ruff>=0.7.0"]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-httpx>=0.36.2",
+    "respx>=0.23.1",
+    "ruff>=0.7.0",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -31,6 +49,17 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "ASYNC", "RUF"]
+# B008: FastAPI's Depends()/Query() in defaults is the intended pattern.
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"app/worker/main.py" = ["RUF012"]  # arq WorkerSettings is a plain config class
+# Pydantic models: mutable defaults are handled by pydantic; ruff can't see the
+# ORMModel base is a BaseModel subclass.
+"app/models/*" = ["RUF012"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+filterwarnings = ["ignore::DeprecationWarning", "ignore::RuntimeWarning"]

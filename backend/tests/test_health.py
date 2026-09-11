@@ -1,15 +1,21 @@
 from __future__ import annotations
 
-from fastapi.testclient import TestClient
+import pytest
+from httpx import AsyncClient
+
+pytestmark = pytest.mark.asyncio
 
 
-def test_health(client: TestClient) -> None:
-    r = client.get("/api/health")
+async def test_health(client: AsyncClient) -> None:
+    r = await client.get("/api/health")
     assert r.status_code == 200
-    assert r.json()["status"] == "ok"
+    body = r.json()
+    assert body["status"] == "ok"
+    assert "elevenlabs" in body["call_llm"]
+    assert body["database"] is True
 
 
-def test_unimplemented_returns_501(client: TestClient) -> None:
-    r = client.get("/api/roles")
-    assert r.status_code == 501
-    assert r.json()["error"]["code"] == "not_implemented"
+async def test_protected_endpoint_requires_auth(client: AsyncClient) -> None:
+    r = await client.get("/api/roles")
+    assert r.status_code == 401
+    assert r.json()["error"]["code"] == "unauthorized"

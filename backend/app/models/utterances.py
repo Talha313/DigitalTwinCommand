@@ -2,15 +2,13 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from app.db.models.enums import UtteranceSource, UtteranceSpeaker
 
 
 class UtteranceRead(BaseModel):
     """One transcript line."""
-
-    model_config = ConfigDict(from_attributes=True)
 
     id: str
     call_id: str
