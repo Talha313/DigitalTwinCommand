@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 
 import {
@@ -11,9 +12,12 @@ import {
   SubmitButton,
 } from "@/components/auth";
 import { useAuthForm } from "@/hooks/use-auth-form";
+import { forgotPassword } from "@/lib/auth";
 import { forgotPasswordSchema } from "@/lib/validations/auth";
 
 export function ForgotPasswordForm() {
+  const [resetToken, setResetToken] = React.useState<string | null>(null);
+
   const {
     values,
     errors,
@@ -26,8 +30,9 @@ export function ForgotPasswordForm() {
   } = useAuthForm({
     initialValues: { email: "" },
     schema: forgotPasswordSchema,
-    onSubmit: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 900));
+    onSubmit: async (data) => {
+      const res = await forgotPassword(data.email);
+      setResetToken(res.reset_token);
     },
   });
 
@@ -47,15 +52,26 @@ export function ForgotPasswordForm() {
           }
         />
 
-        <AuthAlert variant="success" title="Request received">
-          This is a UI preview — no email is actually sent yet.
-        </AuthAlert>
+        {resetToken ? (
+          <AuthAlert variant="info" title="Dev mode">
+            Email isn&apos;t wired up — use this link:{" "}
+            <Link
+              href={`/reset-password?token=${encodeURIComponent(resetToken)}`}
+              className="auth-link break-all"
+            >
+              open reset link
+            </Link>
+          </AuthAlert>
+        ) : null}
 
         <AuthFooter className="border-t-0 pt-0">
           Didn&apos;t get it?{" "}
           <button
             type="button"
-            onClick={() => setStatus("idle")}
+            onClick={() => {
+              setResetToken(null);
+              setStatus("idle");
+            }}
             className="auth-link"
           >
             Try again
