@@ -35,6 +35,55 @@ class XAIClient:
             "Content-Type": "application/json",
         }
 
+    async def complete(
+        self,
+        *,
+        system: str,
+        messages: list[dict[str, Any]],
+        model: str | None = None,
+        max_tokens: int | None = None,
+        web_search: bool = False,
+    ) -> dict[str, Any]:
+        """Non-streaming call, same shape as AnthropicClient.complete() so the
+        two providers are interchangeable for the report pipeline. Returns
+        {text, usage, tool_traces, model}."""
+        body: dict[str, Any] = {
+            "model": model or settings.xai_model,
+            "instructions": system,
+            "input": messages,
+        }
+        if max_tokens:
+            body["max_output_tokens"] = max_tokens
+        if web_search:
+            body["tools"] = [{"type": "web_search"}]
+        try:
+            resp = await shared_client().post(
+                f"{_BASE}/responses",
+                headers=self._headers(),
+                json=body,
+                timeout=_TIMEOUT,
+            )
+            resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise UpstreamError(f"xAI complete failed: {exc}") from exc
+
+        data = resp.json()
+        message = next(
+            (item for item in reversed(data.get("output", [])) if item.get("type") == "message"),
+            None,
+        )
+        text = ""
+        if message is not None:
+            content = (message.get("content") or [{}])[0]
+            text = content.get("text", "")
+        tool_traces = [item for item in data.get("output", []) if item.get("type") != "message"]
+        return {
+            "text": text.strip(),
+            "usage": data.get("usage", {}),
+            "tool_traces": tool_traces,
+            "model": data.get("model"),
+        }
+
     async def x_search(self, query: str) -> dict[str, Any]:
         """Ask Grok to search X/Twitter for `query`. Returns
         {text, citations, model, usage}. Raises UpstreamError on failure —

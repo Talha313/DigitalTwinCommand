@@ -253,6 +253,18 @@ class CallSession:
                 tool=msg.get("client_tool_call", {}).get("tool_name"),
             )
 
+        elif mtype == "agent_tool_response":
+            # Webhook/server tools (e.g. web_search) report here, not via
+            # client_tool_call. Log the full payload while we confirm the
+            # exact field names ElevenLabs sends for this event.
+            event = msg.get("agent_tool_response_event", msg.get("agent_tool_response", {}))
+            log.info("call %s tool response payload: %s", self.call_id, json.dumps(event))
+            self._publish(
+                "tool_call",
+                tool=event.get("tool_name") or event.get("name"),
+                status=event.get("status") or event.get("is_error"),
+            )
+
     # --- whisper injection ------------------------------------------
 
     async def inject_whisper(self, whisper_id: str, text: str, kind: WhisperKind) -> None:
