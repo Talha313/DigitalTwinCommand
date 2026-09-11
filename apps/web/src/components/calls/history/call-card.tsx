@@ -5,14 +5,21 @@ import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusDot } from "@/components/ui/status-dot";
 import { RoleBadge } from "@/components/dashboard/role-badge";
-import { rolesByIds } from "@/lib/role-context";
+import { useRolesByIds } from "@/lib/role-context";
 import { formatDuration } from "@/lib/format";
-import type { CallHistoryEntry, CallStatus } from "@/lib/mock-data/types";
+import {
+  callTimestamp,
+  counterpartyNumber,
+  formatCallTimestamp,
+  toUiStatus,
+  type UiCallStatus,
+} from "@/lib/call-history";
+import { toUiDirection, type CallRead } from "@/lib/calls";
 
 import { OutcomeBadge } from "./outcome-badge";
 
 const STATUS_TONE: Record<
-  CallStatus,
+  UiCallStatus,
   "positive" | "warning" | "critical" | "neutral"
 > = {
   completed: "positive",
@@ -22,36 +29,33 @@ const STATUS_TONE: Record<
 };
 
 export interface CallCardProps {
-  call: CallHistoryEntry;
+  call: CallRead;
   onOpen: () => void;
 }
 
 export function CallCard({ call, onOpen }: CallCardProps) {
-  const roles = rolesByIds(call.roleIds);
-  const DirectionIcon =
-    call.direction === "inbound" ? ArrowDownLeft : ArrowUpRight;
+  const roles = useRolesByIds(call.role_ids);
+  const direction = toUiDirection(call.direction);
+  const DirectionIcon = direction === "inbound" ? ArrowDownLeft : ArrowUpRight;
 
   return (
     <div className="rounded-xl border border-border/60 bg-card p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <StatusDot tone={STATUS_TONE[call.status]} />
-            <p className="truncate text-sm font-medium text-foreground">
-              {call.caller}
+            <StatusDot tone={STATUS_TONE[toUiStatus(call.status)]} />
+            <p className="truncate font-mono text-sm font-medium text-foreground">
+              {counterpartyNumber(call)}
             </p>
           </div>
-          <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">
-            {call.direction === "inbound" ? call.fromNumber : call.toNumber}
-          </p>
         </div>
         <div className="shrink-0 text-right text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <DirectionIcon className="h-3 w-3" aria-hidden />
-            {call.dateLabel}
+            {formatCallTimestamp(callTimestamp(call))}
           </span>
           <p className="mt-0.5 font-mono tabular-nums">
-            {formatDuration(call.durationSeconds)}
+            {formatDuration(call.duration_seconds ?? 0)}
           </p>
         </div>
       </div>

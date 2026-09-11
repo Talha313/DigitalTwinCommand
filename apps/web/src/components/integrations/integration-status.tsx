@@ -1,20 +1,16 @@
 import { cn } from "@/lib/utils";
 import { StatusDot, type StatusTone } from "@/components/ui/status-dot";
-import type { IntegrationStatusId } from "@/lib/mock-data/integrations";
+import type { IntegrationStatus } from "@/lib/integrations";
 
-const META: Record<
-  IntegrationStatusId,
-  { label: string; tone: StatusTone }
-> = {
+const META: Record<IntegrationStatus, { label: string; tone: StatusTone }> = {
   connected: { label: "Connected", tone: "positive" },
-  action_required: { label: "Action required", tone: "warning" },
-  not_configured: { label: "Not configured", tone: "neutral" },
   error: { label: "Error", tone: "critical" },
+  disabled: { label: "Not configured", tone: "neutral" },
 };
 
 export interface IntegrationStatusProps {
-  status: IntegrationStatusId;
-  detail?: string;
+  status: IntegrationStatus;
+  detail?: string | null;
   className?: string;
 }
 
@@ -37,6 +33,6 @@ export function IntegrationStatus({
   );
 }
 
-export function integrationStatusLabel(status: IntegrationStatusId): string {
+export function integrationStatusLabel(status: IntegrationStatus): string {
   return META[status].label;
 }

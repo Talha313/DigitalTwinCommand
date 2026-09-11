@@ -5,7 +5,7 @@ import { MessageSquarePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RiskBadge } from "@/components/roles/risk-badge";
 import { RoleBadge } from "@/components/dashboard/role-badge";
-import { combinedRisk, rolesByIds } from "@/lib/role-context";
+import { useCombinedRisk, useRolesByIds } from "@/lib/role-context";
 
 import { ChatRoleSelector } from "./role-selector";
 
@@ -24,7 +24,8 @@ export function ConversationHeader({
   onNewChat,
   messageCount,
 }: ConversationHeaderProps) {
-  const activeRoles = rolesByIds(roleIds);
+  const activeRoles = useRolesByIds(roleIds);
+  const risk = useCombinedRisk(roleIds);
 
   return (
     <div className="shrink-0 border-b border-border/60 bg-background/80 px-4 py-3 backdrop-blur-md sm:px-6">
@@ -60,7 +61,7 @@ export function ConversationHeader({
             {activeRoles.map((role) => (
               <RoleBadge key={role.id} name={role.name} />
             ))}
-            <RiskBadge level={combinedRisk(roleIds)} className="ml-1" />
+            <RiskBadge level={risk} className="ml-1" />
           </div>
         ) : (
           <p className="text-xs text-amber-300">

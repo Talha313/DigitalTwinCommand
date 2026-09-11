@@ -20,10 +20,12 @@ from app.routers import (
     integrations,
     media,
     memories,
+    notifications,
     push,
     reports,
     roles,
     telephony,
+    users,
     webhooks,
     whispers,
     ws,
@@ -33,6 +35,7 @@ api_router = APIRouter(prefix="/api")
 for _module in (
     health,
     auth,
+    users,
     roles,
     conversations,
     chat,
@@ -44,6 +47,7 @@ for _module in (
     grades,
     audit_logs,
     push,
+    notifications,
 ):
     api_router.include_router(_module.router)
 

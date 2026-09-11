@@ -1,10 +1,7 @@
-import { CalendarPlus, Database, Sparkles } from "lucide-react";
+import { CheckCheck, Clock, Database } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import {
-  SOURCE_LABEL,
-  type TrainingStatsData,
-} from "@/lib/mock-data/memory";
+import { SOURCE_LABEL, type MemorySourceType } from "@/lib/memory";
 
 const NUMBER_FORMAT = new Intl.NumberFormat("en-US");
 
@@ -36,64 +33,50 @@ function Tile({
 }
 
 export interface TrainingStatsProps {
-  stats: TrainingStatsData;
+  total: number;
+  pending: number;
+  approved: number;
+  bySource: { source: MemorySourceType; count: number }[];
   className?: string;
 }
 
-export function TrainingStats({ stats, className }: TrainingStatsProps) {
-  const goldPct = Math.min(
-    100,
-    Math.round((stats.goldCollected / stats.goldTarget) * 100),
-  );
-  const maxSource = Math.max(...stats.bySource.map((entry) => entry.count), 1);
+/** Real counts derived from the fetched memory list. The mock's
+ * "gold dataset target" concept has no backend equivalent — dropped rather
+ * than faked. */
+export function TrainingStats({
+  total,
+  pending,
+  approved,
+  bySource,
+  className,
+}: TrainingStatsProps) {
+  const maxSource = Math.max(...bySource.map((entry) => entry.count), 1);
 
   return (
     <div className={cn("space-y-4", className)}>
       <div className="grid gap-3 sm:grid-cols-3">
         <Tile
           icon={Database}
-          label="Records collected"
-          value={NUMBER_FORMAT.format(stats.totalCollected)}
-          detail="Across all knowledge sources"
+          label="Total records"
+          value={NUMBER_FORMAT.format(total)}
+          detail="Across all sources"
         />
         <Tile
-          icon={CalendarPlus}
-          label="Added this week"
-          value={`+${NUMBER_FORMAT.format(stats.addedThisWeek)}`}
+          icon={Clock}
+          label="Awaiting review"
+          value={NUMBER_FORMAT.format(pending)}
         />
         <Tile
-          icon={Sparkles}
-          label="Gold dataset"
-          value={`${NUMBER_FORMAT.format(stats.goldCollected)} / ${NUMBER_FORMAT.format(stats.goldTarget)}`}
-          detail={`${goldPct}% of target`}
+          icon={CheckCheck}
+          label="Approved"
+          value={NUMBER_FORMAT.format(approved)}
         />
       </div>
 
       <div className="rounded-xl border border-border/60 bg-card p-4">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-foreground">
-            Gold dataset readiness
-          </p>
-          <span className="text-xs text-muted-foreground">{goldPct}%</span>
-        </div>
-        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-primary transition-all"
-            style={{ width: `${goldPct}%` }}
-          />
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          LoRA fine-tuning of an owned model begins once the gold dataset is
-          complete. Not enabled in V1 — Grok remains the reasoning engine.
-        </p>
-      </div>
-
-      <div className="rounded-xl border border-border/60 bg-card p-4">
-        <p className="text-sm font-medium text-foreground">
-          Gold-eligible records by source
-        </p>
+        <p className="text-sm font-medium text-foreground">Records by source</p>
         <ul className="mt-3 space-y-2">
-          {stats.bySource.map((entry) => (
+          {bySource.map((entry) => (
             <li key={entry.source} className="flex items-center gap-3">
               <span className="w-32 shrink-0 truncate text-xs text-muted-foreground">
                 {SOURCE_LABEL[entry.source]}

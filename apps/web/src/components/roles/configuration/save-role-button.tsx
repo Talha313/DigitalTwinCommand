@@ -42,13 +42,7 @@ export function SaveRoleButton({
   return (
     <div className="sticky bottom-4 z-10">
       <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-card/95 p-3 shadow-lg backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-muted-foreground">
-          {message}
-          <span className="text-muted-foreground/70">
-            {" "}
-            · UI preview, not persisted
-          </span>
-        </p>
+        <p className="text-xs text-muted-foreground">{message}</p>
         <div className="flex gap-2">
           <Button
             variant="ghost"

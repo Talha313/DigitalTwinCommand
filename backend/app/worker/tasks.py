@@ -19,6 +19,7 @@ from app.db.models.user import User
 from app.db.session import session_scope
 from app.providers.anthropic_client import anthropic_client
 from app.services.base import as_uuid
+from app.services.notifications import create_notifications
 from app.services.push import notify_users
 from app.worker.report_pipeline import (
     ReportGone,
@@ -176,13 +177,12 @@ async def _page_operators(report_id: str, message: str) -> None:
                 )
             ).scalars()
         ]
-    await notify_users(
-        op_ids,
-        {
-            "title": "Digital Twin — Daily report",
-            "body": message,
-            "url": f"/reports/{report_id}",
-            "tag": "daily-report",
-        },
-    )
+    payload = {
+        "title": "Digital Twin — Daily report",
+        "body": message,
+        "url": f"/reports/{report_id}",
+        "tag": "daily-report",
+    }
+    await notify_users(op_ids, payload)
+    await create_notifications(op_ids, **payload)
     log.info("paged operators: %s", message)

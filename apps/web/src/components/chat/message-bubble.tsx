@@ -1,22 +1,9 @@
 import { Sparkles } from "lucide-react";
 
-import { cn } from "@/lib/utils";
-import { RiskBadge } from "@/components/roles/risk-badge";
-import { toolIcon } from "@/components/roles/tool-icon";
-import { getRole } from "@/lib/mock-data/roles";
-import type { ChatMessage, ToolInvocationStatus } from "@/lib/mock-data/types";
-
-const TOOL_STATUS: Record<
-  ToolInvocationStatus,
-  { label: string; className: string }
-> = {
-  running: { label: "Running", className: "text-amber-300" },
-  completed: { label: "Done", className: "text-emerald-300" },
-  blocked: { label: "Blocked", className: "text-rose-300" },
-};
+import type { UiChatMessage } from "@/lib/chat";
 
 export interface MessageBubbleProps {
-  message: ChatMessage;
+  message: UiChatMessage;
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
@@ -35,8 +22,6 @@ export function MessageBubble({ message }: MessageBubbleProps) {
     );
   }
 
-  const role = message.roleId ? getRole(message.roleId) : undefined;
-
   return (
     <div className="flex gap-3">
       <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-indigo-500">
@@ -44,62 +29,31 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       </span>
       <div className="min-w-0 max-w-[85%] sm:max-w-[80%]">
         <div className="mb-1 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-foreground">
-            Digital Twin
-          </span>
-          {role ? (
-            <>
-              <span className="text-xs text-muted-foreground">
-                &middot; {role.shortName}
-              </span>
-              <RiskBadge level={role.riskLevel} showLabel={false} />
-            </>
-          ) : null}
+          <span className="text-xs font-medium text-foreground">Digital Twin</span>
         </div>
 
-        <div className="rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3.5 py-2.5">
-          <p className="whitespace-pre-wrap text-sm text-foreground">
+        <div
+          className={
+            message.error
+              ? "rounded-2xl rounded-tl-sm border border-destructive/40 bg-destructive/10 px-3.5 py-2.5"
+              : "rounded-2xl rounded-tl-sm border border-border/60 bg-card px-3.5 py-2.5"
+          }
+        >
+          <p
+            className={
+              message.error
+                ? "whitespace-pre-wrap text-sm text-destructive"
+                : "whitespace-pre-wrap text-sm text-foreground"
+            }
+          >
             {message.content}
+            {message.streaming ? (
+              <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse bg-current align-middle" />
+            ) : null}
           </p>
         </div>
 
-        {message.tools && message.tools.length > 0 ? (
-          <ul className="mt-2 space-y-1.5">
-            {message.tools.map((tool) => {
-              const Icon = toolIcon(tool.toolId);
-              const status = TOOL_STATUS[tool.status];
-              return (
-                <li
-                  key={tool.id}
-                  className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/40 px-2.5 py-1.5 text-xs"
-                >
-                  <Icon
-                    className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-                    aria-hidden
-                  />
-                  <span className="shrink-0 text-foreground">{tool.label}</span>
-                  {tool.detail ? (
-                    <span className="truncate text-muted-foreground">
-                      &middot; {tool.detail}
-                    </span>
-                  ) : null}
-                  <span
-                    className={cn(
-                      "ml-auto shrink-0 font-medium",
-                      status.className,
-                    )}
-                  >
-                    {status.label}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
-
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          {message.timestamp}
-        </p>
+        <p className="mt-1 text-[11px] text-muted-foreground">{message.timestamp}</p>
       </div>
     </div>
   );

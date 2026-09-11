@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { DataQuality } from "@/lib/mock-data/memory";
+import type { DataQuality } from "@/lib/memory";
 
 const META: Record<DataQuality, { label: string; className: string }> = {
   high: {

@@ -74,7 +74,7 @@ export function ChatInput({
           {roleCount > 0
             ? `Replying with ${roleCount} role${roleCount > 1 ? "s" : ""}`
             : "Select at least one role"}
-          {" · Enter to send, Shift+Enter for a new line · UI preview"}
+          {" · Enter to send, Shift+Enter for a new line"}
         </p>
       </div>
     </div>

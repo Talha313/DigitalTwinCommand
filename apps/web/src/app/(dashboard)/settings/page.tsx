@@ -33,9 +33,9 @@ const SECTIONS: SettingsSection[] = [
   {
     title: "Team",
     description: "Operators and access.",
-    href: "/settings",
+    href: "/settings/team",
     icon: Users,
-    ready: false,
+    ready: true,
   },
   {
     title: "Notifications",

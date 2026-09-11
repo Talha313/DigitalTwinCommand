@@ -1,26 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Landmark,
-  Lock,
-  Megaphone,
-  Workflow,
-  type LucideIcon,
-} from "lucide-react";
+import { Landmark, Lock, Megaphone, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { StatusDot } from "@/components/ui/status-dot";
-import type { Role } from "@/lib/mock-data/types";
+import type { RiskLevel, RoleRead } from "@/lib/roles";
 
 import { RiskBadge } from "./risk-badge";
 
-const ROLE_ICON: Record<string, LucideIcon> = {
-  financial: Landmark,
-  operator: Workflow,
-  public: Megaphone,
-  private: Lock,
+/** Real role ids are UUIDs (no stable slug to key an icon lookup on), so
+ * icon variety is derived from risk level instead. */
+const RISK_ICON: Record<RiskLevel, LucideIcon> = {
+  low: Lock,
+  medium: Megaphone,
+  high: Landmark,
 };
 
 const MAX_CHIPS = 4;
@@ -59,7 +54,7 @@ function Chips({
 }
 
 export interface RoleCardProps {
-  role: Role;
+  role: RoleRead;
   selected?: boolean;
   onViewDetails: () => void;
   className?: string;
@@ -71,7 +66,8 @@ export function RoleCard({
   onViewDetails,
   className,
 }: RoleCardProps) {
-  const Icon = ROLE_ICON[role.id] ?? Landmark;
+  const Icon = RISK_ICON[role.risk_level];
+  const enabledTools = role.tools.filter((access) => access.enabled);
 
   return (
     <article
@@ -91,46 +87,53 @@ export function RoleCard({
               <h3 className="text-sm font-semibold text-foreground">
                 {role.name}
               </h3>
-              <p className="text-xs text-muted-foreground">
-                {role.personality.tone}
-              </p>
+              {role.tone ? (
+                <p className="text-xs text-muted-foreground">{role.tone}</p>
+              ) : null}
             </div>
           </div>
-          <RiskBadge level={role.riskLevel} className="shrink-0" />
+          <RiskBadge level={role.risk_level} className="shrink-0" />
         </div>
-        <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
-          {role.description}
-        </p>
+        {role.description ? (
+          <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
+            {role.description}
+          </p>
+        ) : null}
       </div>
 
       <div className="flex-1 space-y-4 p-5">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Personality
-          </p>
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {role.personality.traits.map((trait) => (
-              <span
-                key={trait}
-                className="rounded-md border border-border/60 bg-background/40 px-1.5 py-0.5 text-[11px] text-muted-foreground"
-              >
-                {trait}
-              </span>
-            ))}
+        {role.personality?.traits && role.personality.traits.length > 0 ? (
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Personality
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {role.personality.traits.map((trait) => (
+                <span
+                  key={trait}
+                  className="rounded-md border border-border/60 bg-background/40 px-1.5 py-0.5 text-[11px] text-muted-foreground"
+                >
+                  {trait}
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : null}
 
-        <Chips label="Tools" items={role.tools.map((tool) => tool.id)} />
+        <Chips
+          label="Tools"
+          items={enabledTools.map((access) => access.tool.name)}
+        />
         <Chips
           label="Permissions"
-          items={role.permissions.map((permission) => permission.id)}
+          items={role.permissions.map((permission) => permission.name)}
         />
       </div>
 
       <div className="flex items-center justify-between border-t border-border/60 p-4">
         <span className="flex items-center gap-2 text-xs text-muted-foreground">
-          <StatusDot tone={role.active ? "positive" : "neutral"} />
-          {role.active ? "Active" : "Inactive"}
+          <StatusDot tone={role.is_active ? "positive" : "neutral"} />
+          {role.is_active ? "Active" : "Inactive"}
         </span>
         <div className="flex gap-2">
           <Button asChild variant="ghost" size="sm">

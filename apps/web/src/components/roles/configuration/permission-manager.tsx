@@ -1,19 +1,19 @@
 "use client";
 
-import { RiskBadge } from "@/components/roles/risk-badge";
 import { Switch } from "@/components/ui/switch";
-import {
-  PERMISSION_CATALOG,
-  PERMISSION_CATEGORIES,
-  PERMISSION_CATEGORY_LABEL,
-} from "@/lib/mock-data/role-config";
+import { permissionCategory, type PermissionRead } from "@/lib/roles";
 
 export interface PermissionManagerProps {
+  permissions: PermissionRead[];
   value: string[];
   onChange: (ids: string[]) => void;
 }
 
-export function PermissionManager({ value, onChange }: PermissionManagerProps) {
+export function PermissionManager({
+  permissions,
+  value,
+  onChange,
+}: PermissionManagerProps) {
   const toggle = (id: string) =>
     onChange(
       value.includes(id)
@@ -21,10 +21,17 @@ export function PermissionManager({ value, onChange }: PermissionManagerProps) {
         : [...value, id],
     );
 
-  const groups = PERMISSION_CATEGORIES.map((category) => ({
-    category,
-    items: PERMISSION_CATALOG.filter((item) => item.category === category),
-  })).filter((group) => group.items.length > 0);
+  const categories = Array.from(
+    new Set(permissions.map((permission) => permissionCategory(permission.name))),
+  ).sort();
+  const groups = categories
+    .map((category) => ({
+      category,
+      items: permissions.filter(
+        (permission) => permissionCategory(permission.name) === category,
+      ),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <div className="flex flex-col rounded-xl border border-border/60 bg-card">
@@ -36,7 +43,7 @@ export function PermissionManager({ value, onChange }: PermissionManagerProps) {
           </p>
         </div>
         <span className="shrink-0 text-xs text-muted-foreground">
-          {value.length} of {PERMISSION_CATALOG.length} enabled
+          {value.length} of {permissions.length} enabled
         </span>
       </div>
 
@@ -44,7 +51,7 @@ export function PermissionManager({ value, onChange }: PermissionManagerProps) {
         {groups.map((group) => (
           <div key={group.category} className="p-5">
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {PERMISSION_CATEGORY_LABEL[group.category]}
+              {group.category}
             </p>
             <ul className="space-y-2">
               {group.items.map((permission) => {
@@ -55,24 +62,17 @@ export function PermissionManager({ value, onChange }: PermissionManagerProps) {
                     className="flex items-start justify-between gap-3 rounded-lg border border-border/50 bg-background/40 p-3"
                   >
                     <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span
-                          id={`perm-${permission.id}`}
-                          className="font-mono text-xs text-primary"
-                        >
-                          {permission.id}
-                        </span>
-                        <RiskBadge
-                          level={permission.risk}
-                          showLabel={false}
-                        />
-                      </div>
-                      <p className="mt-0.5 text-sm text-foreground">
-                        {permission.label}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {permission.description}
-                      </p>
+                      <span
+                        id={`perm-${permission.id}`}
+                        className="font-mono text-xs text-primary"
+                      >
+                        {permission.name}
+                      </span>
+                      {permission.description ? (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {permission.description}
+                        </p>
+                      ) : null}
                     </div>
                     <Switch
                       checked={enabled}

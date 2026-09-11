@@ -1,26 +1,21 @@
 "use client";
 
-import { integrations as allIntegrations } from "@/lib/mock-data/integrations";
-import type { Integration } from "@/lib/mock-data/integrations";
+import type { IntegrationRead } from "@/lib/integrations";
 
 import { IntegrationCard } from "./integration-card";
 
 export interface IntegrationListProps {
-  integrations?: Integration[];
+  integrations: IntegrationRead[];
   onConfigure: (id: string) => void;
 }
 
 export function IntegrationList({
-  integrations = allIntegrations,
+  integrations,
   onConfigure,
 }: IntegrationListProps) {
   const connected = integrations.filter((i) => i.status === "connected").length;
-  const needsAction = integrations.filter(
-    (i) => i.status === "action_required",
-  ).length;
-  const notConfigured = integrations.filter(
-    (i) => i.status === "not_configured" || i.status === "error",
-  ).length;
+  const errored = integrations.filter((i) => i.status === "error").length;
+  const disabled = integrations.filter((i) => i.status === "disabled").length;
 
   return (
     <div className="space-y-4">
@@ -28,14 +23,14 @@ export function IntegrationList({
         <span className="rounded-md border border-border/60 bg-card px-2.5 py-1 text-foreground">
           {connected} connected
         </span>
-        {needsAction > 0 ? (
-          <span className="rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-amber-300">
-            {needsAction} need attention
+        {errored > 0 ? (
+          <span className="rounded-md border border-rose-500/25 bg-rose-500/10 px-2.5 py-1 text-rose-300">
+            {errored} need attention
           </span>
         ) : null}
-        {notConfigured > 0 ? (
+        {disabled > 0 ? (
           <span className="rounded-md border border-border/60 bg-card px-2.5 py-1 text-muted-foreground">
-            {notConfigured} not configured
+            {disabled} not configured
           </span>
         ) : null}
       </div>

@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
 
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
+import { PageContainer } from "@/components/layout/page-container";
+import { ReportDetail } from "@/components/reports/report-detail";
 
 export const metadata: Metadata = { title: "Report" };
 
-export default function ReportDetailPage() {
+export default async function ReportDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+
   return (
-    <ModulePlaceholder
-      title="Report detail"
-      description="The full report view is coming in a later milestone."
-    />
+    <PageContainer>
+      <ReportDetail reportId={id} />
+    </PageContainer>
   );
 }

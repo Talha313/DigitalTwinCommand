@@ -312,11 +312,22 @@ export function useLiveCall() {
         const res = await sendWhisperApi(callId, text);
         const stamp = formatDuration(elapsedNow());
         const uiStatus = toUiWhisperStatus(res.status);
-        setWhispers((prev) => [{ id: res.id, text, status: uiStatus, sentAtLabel: `Sent at ${stamp}` }, ...prev]);
-        setTranscript((prev) => [
-          ...prev,
-          { id: `w-${res.id}`, speaker: "whisper", text, timestamp: stamp, whisperStatus: uiStatus },
-        ]);
+        // The server broadcasts the "whisper" WS event before this HTTP
+        // response returns, so it routinely arrives and gets added first —
+        // dedupe the same way the WS handler does instead of adding blindly.
+        setWhispers((prev) =>
+          prev.some((w) => w.id === res.id)
+            ? prev.map((w) => (w.id === res.id ? { ...w, status: uiStatus } : w))
+            : [{ id: res.id, text, status: uiStatus, sentAtLabel: `Sent at ${stamp}` }, ...prev],
+        );
+        setTranscript((prev) =>
+          prev.some((u) => u.id === `w-${res.id}`)
+            ? prev.map((u) => (u.id === `w-${res.id}` ? { ...u, whisperStatus: uiStatus } : u))
+            : [
+                ...prev,
+                { id: `w-${res.id}`, speaker: "whisper", text, timestamp: stamp, whisperStatus: uiStatus },
+              ],
+        );
         setState((current) => (current === "LISTENING" || current === "SPEAKING" ? "WHISPER_QUEUED" : current));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to send whisper.");

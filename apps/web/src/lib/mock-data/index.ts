@@ -5,7 +5,6 @@ export * from "./reports";
 export * from "./activity";
 export * from "./roles";
 export * from "./chat";
-export * from "./call-history";
 export * from "./role-config";
 export * from "./integrations";
 export * from "./memory";

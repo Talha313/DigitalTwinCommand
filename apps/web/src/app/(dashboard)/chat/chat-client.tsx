@@ -6,12 +6,13 @@ import { ChatInput } from "@/components/chat/chat-input";
 import { ChatWindow } from "@/components/chat/chat-window";
 import { ConversationHeader } from "@/components/chat/conversation-header";
 import {
-  chatConversation,
-  previewReplies,
-  suggestedPrompts,
-} from "@/lib/mock-data/chat";
-import type { ChatMessage } from "@/lib/mock-data/types";
-import { rolesByIds } from "@/lib/role-context";
+  getConversation,
+  listConversations,
+  streamChat,
+  type UiChatMessage,
+} from "@/lib/chat";
+import { suggestedPrompts } from "@/lib/mock-data/chat";
+import { useRolesByIds } from "@/lib/role-context";
 
 function timeNow(): string {
   return new Date().toLocaleTimeString([], {
@@ -21,68 +22,136 @@ function timeNow(): string {
   });
 }
 
+function toUiMessage(row: { id: string; role: string; content: string; created_at: string }): UiChatMessage {
+  return {
+    id: row.id,
+    author: row.role === "user" ? "user" : "twin",
+    content: row.content,
+    timestamp: new Date(row.created_at).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }),
+  };
+}
+
 export function ChatClient() {
-  const [roleIds, setRoleIds] = React.useState<string[]>(
-    chatConversation.roleIds,
-  );
-  const [messages, setMessages] = React.useState<ChatMessage[]>(
-    chatConversation.messages,
-  );
+  const [conversationId, setConversationId] = React.useState<string | null>(null);
+  const [roleIds, setRoleIds] = React.useState<string[]>([]);
+  const [messages, setMessages] = React.useState<UiChatMessage[]>([]);
+  const [title, setTitle] = React.useState("New conversation");
   const [input, setInput] = React.useState("");
   const [isThinking, setIsThinking] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
 
-  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const replyIndexRef = React.useRef(0);
+  const streamRef = React.useRef<ReturnType<typeof streamChat> | null>(null);
 
-  React.useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    },
-    [],
-  );
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const conversations = await listConversations();
+        if (cancelled) return;
+        if (conversations.length > 0) {
+          const latest = conversations[0];
+          if (!latest) return;
+          const full = await getConversation(latest.id);
+          if (cancelled) return;
+          setConversationId(full.id);
+          setRoleIds(full.role_ids);
+          setTitle(full.title ?? "Conversation");
+          setMessages(full.messages.map(toUiMessage));
+        }
+      } catch {
+        /* start fresh if this fails — not fatal */
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      streamRef.current?.abort();
+    };
+  }, []);
 
   const send = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isThinking) return;
 
-    const userMessage: ChatMessage = {
+    const userMessage: UiChatMessage = {
       id: `u-${Date.now()}`,
       author: "user",
       content: trimmed,
       timestamp: timeNow(),
     };
-    setMessages((prev) => [...prev, userMessage]);
+    const assistantId = `t-${Date.now()}`;
+    setMessages((prev) => [
+      ...prev,
+      userMessage,
+      { id: assistantId, author: "twin", content: "", timestamp: timeNow(), streaming: true },
+    ]);
     setInput("");
     setIsThinking(true);
 
-    timerRef.current = setTimeout(() => {
-      const index = replyIndexRef.current % previewReplies.length;
-      replyIndexRef.current += 1;
-      const twinMessage: ChatMessage = {
-        id: `t-${Date.now()}`,
-        author: "twin",
-        content: previewReplies[index] ?? "UI preview.",
-        timestamp: timeNow(),
-        roleId: roleIds[0],
-      };
-      setMessages((prev) => [...prev, twinMessage]);
-      setIsThinking(false);
-    }, 1400);
+    streamRef.current = streamChat(
+      { conversation_id: conversationId ?? undefined, content: trimmed, role_ids: roleIds },
+      {
+        onEvent: (event) => {
+          if (event.type === "start") {
+            if (!conversationId) setConversationId(event.conversation_id);
+          } else if (event.type === "delta") {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId ? { ...m, content: m.content + event.text } : m,
+              ),
+            );
+          } else if (event.type === "done") {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? { ...m, content: event.text, streaming: false }
+                  : m,
+              ),
+            );
+            setIsThinking(false);
+          } else if (event.type === "error") {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? { ...m, content: event.error, streaming: false, error: true }
+                  : m,
+              ),
+            );
+            setIsThinking(false);
+          }
+        },
+      },
+    );
   };
 
   const newChat = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
+    streamRef.current?.abort();
+    setConversationId(null);
+    setTitle("New conversation");
     setMessages([]);
     setInput("");
     setIsThinking(false);
   };
 
-  const roleNames = rolesByIds(roleIds).map((role) => role.name);
+  const roleNames = useRolesByIds(roleIds).map((role) => role.name);
+
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+        Loading conversation…
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col">
       <ConversationHeader
-        title={chatConversation.title}
+        title={title}
         roleIds={roleIds}
         onRoleIdsChange={setRoleIds}
         onNewChat={newChat}

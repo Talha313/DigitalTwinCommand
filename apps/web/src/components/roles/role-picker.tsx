@@ -9,7 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { combinedRisk } from "@/lib/role-context";
+import { useCombinedRisk } from "@/lib/role-context";
 
 import { RiskBadge } from "./risk-badge";
 import { RoleSelector } from "./role-selector";
@@ -36,6 +36,7 @@ export function RolePicker({
   triggerClassName,
 }: RolePickerProps) {
   const count = value.length;
+  const risk = useCombinedRisk(value);
 
   return (
     <Popover>
@@ -47,7 +48,7 @@ export function RolePicker({
         >
           {count > 0 ? `${count} role${count > 1 ? "s" : ""}` : "Select roles"}
           {count > 0 ? (
-            <RiskBadge level={combinedRisk(value)} showLabel={false} />
+            <RiskBadge level={risk} showLabel={false} />
           ) : null}
           <ChevronDown
             className="h-3.5 w-3.5 text-muted-foreground"

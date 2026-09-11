@@ -1,32 +1,15 @@
-import { Activity, Mic, Radio, ShieldCheck, Sparkles } from "lucide-react";
+"use client";
+
+import * as React from "react";
+import { Bot, Database, Mic, ShieldCheck, Sparkles, Video } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { StatusDot, type StatusTone } from "@/components/ui/status-dot";
-import { twinSnapshot } from "@/lib/mock-data/dashboard";
-import type { ServiceState, TwinSnapshot } from "@/lib/mock-data/types";
+import { useHealth } from "@/hooks/use-health";
+import { listRoles, type RoleRead } from "@/lib/roles";
 
 import { DashboardCard } from "./dashboard-card";
 import { RoleBadge } from "./role-badge";
-
-const MODE_LABEL: Record<TwinSnapshot["mode"], string> = {
-  listening: "Listening",
-  thinking: "Thinking",
-  speaking: "Speaking",
-  idle: "Idle",
-};
-
-const SERVICE_LABEL: Record<ServiceState, string> = {
-  connected: "Connected",
-  ready: "Ready",
-  disconnected: "Disconnected",
-  error: "Error",
-};
-
-function serviceTone(state: ServiceState): StatusTone {
-  if (state === "connected" || state === "ready") return "positive";
-  if (state === "disconnected") return "warning";
-  return "critical";
-}
 
 interface FieldProps {
   icon: LucideIcon;
@@ -50,14 +33,40 @@ function Field({ icon: Icon, label, value, tone }: FieldProps) {
   );
 }
 
-export function TwinStatusCard({
-  snapshot = twinSnapshot,
-  className,
-}: {
-  snapshot?: TwinSnapshot;
-  className?: string;
-}) {
-  const online = snapshot.status === "online";
+function toneFor(ok: boolean): StatusTone {
+  return ok ? "positive" : "warning";
+}
+
+/** Live operational state, derived from GET /api/health (integrations,
+ * database) plus GET /api/roles for the active-roles list — no more
+ * fabricated "listening/thinking" twin mode, since the backend has no
+ * global twin-mode concept outside of a single live call. */
+export function TwinStatusCard({ className }: { className?: string }) {
+  const { health, loading: healthLoading, error: healthError } = useHealth();
+  const [roles, setRoles] = React.useState<RoleRead[] | null>(null);
+  const [rolesError, setRolesError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    listRoles()
+      .then((rows) => {
+        if (!cancelled) setRoles(rows);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setRolesError(err instanceof Error ? err.message : "Failed to load roles.");
+          setRoles([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const online = health?.status === "ok";
+  const activeRoles = (roles ?? []).filter((role) => role.is_active);
 
   return (
     <DashboardCard
@@ -68,31 +77,44 @@ export function TwinStatusCard({
       action={
         <span className="inline-flex items-center gap-2 rounded-full border border-border/60 px-2.5 py-1 text-xs font-medium text-foreground">
           <StatusDot tone={online ? "positive" : "critical"} pulse={online} />
-          {online ? "Online" : "Offline"}
+          {healthLoading ? "Checking…" : online ? "Online" : "Degraded"}
         </span>
       }
     >
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field icon={Activity} label="Current mode" value={MODE_LABEL[snapshot.mode]} />
-        <Field
-          icon={Mic}
-          label="Voice"
-          value={SERVICE_LABEL[snapshot.voice]}
-          tone={serviceTone(snapshot.voice)}
-        />
-        <Field
-          icon={Sparkles}
-          label="AI engine"
-          value={SERVICE_LABEL[snapshot.aiEngine]}
-          tone={serviceTone(snapshot.aiEngine)}
-        />
-        <Field
-          icon={Radio}
-          label="Session"
-          value={online ? "Active" : "Idle"}
-          tone={online ? "positive" : "neutral"}
-        />
-      </div>
+      {healthLoading ? (
+        <p className="text-sm text-muted-foreground">Loading system status…</p>
+      ) : healthError || !health ? (
+        <p className="text-sm text-destructive">
+          {healthError ?? "Failed to load system status."}
+        </p>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field
+            icon={Mic}
+            label="Voice"
+            value={health.integrations.elevenlabs ? "Connected" : "Not configured"}
+            tone={toneFor(health.integrations.elevenlabs)}
+          />
+          <Field
+            icon={Bot}
+            label="AI engine"
+            value={health.integrations.anthropic ? "Ready" : "Not configured"}
+            tone={toneFor(health.integrations.anthropic)}
+          />
+          <Field
+            icon={Video}
+            label="Lip-sync"
+            value={health.integrations.lipsync ? "Ready" : "Not configured"}
+            tone={toneFor(health.integrations.lipsync)}
+          />
+          <Field
+            icon={Database}
+            label="Database"
+            value={health.database ? "Connected" : "Error"}
+            tone={toneFor(health.database)}
+          />
+        </div>
+      )}
 
       <div className="mt-5 border-t border-border/60 pt-4">
         <p className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -100,9 +122,15 @@ export function TwinStatusCard({
           Active roles
         </p>
         <div className="flex flex-wrap gap-2">
-          {snapshot.roles.map((role) => (
-            <RoleBadge key={role.id} name={role.name} />
-          ))}
+          {roles === null ? (
+            <p className="text-xs text-muted-foreground">Loading roles…</p>
+          ) : rolesError ? (
+            <p className="text-xs text-destructive">{rolesError}</p>
+          ) : activeRoles.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No active roles.</p>
+          ) : (
+            activeRoles.map((role) => <RoleBadge key={role.id} name={role.name} />)
+          )}
         </div>
       </div>
     </DashboardCard>

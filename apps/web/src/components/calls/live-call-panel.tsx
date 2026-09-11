@@ -3,7 +3,7 @@
 import { RiskBadge } from "@/components/roles/risk-badge";
 import { RoleBadge } from "@/components/dashboard/role-badge";
 import { useLiveCall } from "@/hooks/use-live-call";
-import { combinedRisk, rolesByIds } from "@/lib/role-context";
+import { useCombinedRisk, useRolesByIds } from "@/lib/role-context";
 import { suggestedWhispers } from "@/lib/mock-data/calls";
 
 import { AudioVisualizer } from "./audio-visualizer";
@@ -33,7 +33,8 @@ export function LiveCallPanel() {
     sendWhisper,
   } = useLiveCall();
 
-  const activeRoles = rolesByIds(roleIds);
+  const activeRoles = useRolesByIds(roleIds);
+  const combinedRoleRisk = useCombinedRisk(roleIds);
   const controlsDisabled =
     state === "IDLE" || state === "ENDED" || state === "ENDING";
   const speakingTone: "twin" | "caller" | "idle" =
@@ -127,7 +128,7 @@ export function LiveCallPanel() {
                   {activeRoles.map((role) => (
                     <RoleBadge key={role.id} name={role.name} />
                   ))}
-                  <RiskBadge level={combinedRisk(roleIds)} className="ml-1" />
+                  <RiskBadge level={combinedRoleRisk} className="ml-1" />
                 </>
               ) : (
                 <p className="text-xs text-amber-300">

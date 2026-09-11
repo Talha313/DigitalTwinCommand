@@ -1,31 +1,32 @@
 "use client";
 
 import {
+  Bell,
   Check,
   Clapperboard,
   Database,
   Phone,
   Sparkles,
   Waves,
-  X,
   type LucideIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { Integration } from "@/lib/mock-data/integrations";
+import { getProviderMeta, type IntegrationRead } from "@/lib/integrations";
 
 import { IntegrationStatus } from "./integration-status";
 
-const ICON: Record<string, LucideIcon> = {
-  twilio: Phone,
-  elevenlabs: Waves,
-  anthropic: Sparkles,
-  heygen: Clapperboard,
-  s3: Database,
+const ICON: Record<ReturnType<typeof getProviderMeta>["icon"], LucideIcon> = {
+  phone: Phone,
+  waves: Waves,
+  sparkles: Sparkles,
+  clapperboard: Clapperboard,
+  database: Database,
+  bell: Bell,
 };
 
 export interface IntegrationCardProps {
-  integration: Integration;
+  integration: IntegrationRead;
   onConfigure: () => void;
 }
 
@@ -33,7 +34,9 @@ export function IntegrationCard({
   integration,
   onConfigure,
 }: IntegrationCardProps) {
-  const Icon = ICON[integration.id] ?? Sparkles;
+  const meta = getProviderMeta(integration.provider);
+  const Icon = ICON[meta.icon];
+  const connected = integration.status === "connected";
 
   return (
     <article className="flex flex-col rounded-xl border border-border/60 bg-card">
@@ -47,76 +50,72 @@ export function IntegrationCard({
               {integration.name}
             </h3>
             <p className="text-xs text-muted-foreground">
-              {integration.category} · {integration.purpose}
+              {meta.category} · {meta.purpose}
             </p>
           </div>
         </div>
-        <IntegrationStatus
-          status={integration.status}
-          className="shrink-0"
-        />
+        <IntegrationStatus status={integration.status} className="shrink-0" />
       </div>
 
       <div className="flex-1 space-y-4 p-4">
-        <p className="text-sm text-muted-foreground">
-          {integration.description}
-        </p>
+        <p className="text-sm text-muted-foreground">{meta.description}</p>
 
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Capabilities
-          </p>
-          <ul className="mt-1.5 space-y-1">
-            {integration.capabilities.map((capability) => (
-              <li
-                key={capability.id}
-                className="flex items-center gap-2 text-xs"
-              >
-                {capability.enabled ? (
-                  <Check
-                    className="h-3.5 w-3.5 shrink-0 text-emerald-300"
-                    aria-hidden
-                  />
-                ) : (
-                  <X
-                    className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60"
-                    aria-hidden
-                  />
-                )}
-                <span
-                  className={
-                    capability.enabled
-                      ? "text-foreground"
-                      : "text-muted-foreground/70"
-                  }
+        {meta.capabilities.length > 0 ? (
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Capabilities
+            </p>
+            <ul className="mt-1.5 space-y-1">
+              {meta.capabilities.map((capability) => (
+                <li
+                  key={capability.id}
+                  className="flex items-center gap-2 text-xs"
                 >
-                  {capability.label}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Environment
-          </p>
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            {integration.fields.map((field) => (
-              <span
-                key={field.key}
-                className="rounded border border-border/60 bg-background/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
-              >
-                {field.key}
-              </span>
-            ))}
+                  <Check
+                    className={
+                      connected
+                        ? "h-3.5 w-3.5 shrink-0 text-emerald-300"
+                        : "h-3.5 w-3.5 shrink-0 text-muted-foreground/60"
+                    }
+                    aria-hidden
+                  />
+                  <span
+                    className={
+                      connected
+                        ? "text-foreground"
+                        : "text-muted-foreground/70"
+                    }
+                  >
+                    {capability.label}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
-        </div>
+        ) : null}
+
+        {meta.fields.length > 0 ? (
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Configuration
+            </p>
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {meta.fields.map((field) => (
+                <span
+                  key={field.key}
+                  className="rounded border border-border/60 bg-background/40 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+                >
+                  {field.key}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex items-center justify-between gap-2 border-t border-border/60 p-3">
         <span className="text-[11px] text-muted-foreground">
-          {integration.lastCheckedLabel ?? "Never checked"}
+          {integration.type ?? " "}
         </span>
         <Button variant="outline" size="sm" onClick={onConfigure}>
           Configure

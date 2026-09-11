@@ -1,11 +1,11 @@
 "use client";
 
-import type { MemoryRecord } from "@/lib/mock-data/memory";
+import type { MemoryRead } from "@/lib/memory";
 
 import { MemoryCard } from "./memory-card";
 
 export interface MemoryListProps {
-  memories: MemoryRecord[];
+  memories: MemoryRead[];
   onReview: (id: string) => void;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;

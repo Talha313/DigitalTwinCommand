@@ -6,10 +6,10 @@ import { Sparkles } from "lucide-react";
 import { MessageBubble } from "./message-bubble";
 import { EmptyChatState } from "./empty-chat-state";
 import { TypingIndicator } from "./typing-indicator";
-import type { ChatMessage } from "@/lib/mock-data/types";
+import type { UiChatMessage } from "@/lib/chat";
 
 export interface ChatWindowProps {
-  messages: ChatMessage[];
+  messages: UiChatMessage[];
   isThinking: boolean;
   roleNames: string[];
   prompts: string[];
