@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel
-
 from app.db.models.enums import UtteranceSource, UtteranceSpeaker
+from app.models.base import ORMModel
 
 
-class UtteranceRead(BaseModel):
+class UtteranceRead(ORMModel):
     """One transcript line."""
 
     id: str

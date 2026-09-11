@@ -116,7 +116,15 @@ async def media_stream(ws: WebSocket) -> None:
     session_obj = None
     try:
         while True:
-            raw = await ws.receive_text()
+            try:
+                raw = await ws.receive_text()
+            except RuntimeError:
+                # The bridge's own CallSession.close() (triggered from the
+                # ElevenLabs side, or a Twilio status callback) can close this
+                # same websocket concurrently — Starlette then raises here
+                # instead of a clean WebSocketDisconnect. Same outcome either
+                # way: the call ended, nothing to log as an error.
+                break
             frame = json.loads(raw)
             event = frame.get("event")
 
@@ -130,9 +138,12 @@ async def media_stream(ws: WebSocket) -> None:
                     return
                 role_ids, first_message = await _call_context(call_id)
                 session_obj = await get_or_create_session(
-                    call_id, role_ids=role_ids, first_message=first_message
+                    call_id,
+                    ws=ws,
+                    stream_sid=stream_sid,
+                    role_ids=role_ids,
+                    first_message=first_message,
                 )
-                session_obj.attach_twilio(ws, stream_sid)
                 log.info("media stream open call=%s sid=%s", call_id, stream_sid)
 
             elif event == "media" and session_obj is not None:
