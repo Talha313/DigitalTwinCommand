@@ -53,6 +53,7 @@ export interface CallControlsProps {
   onToggleHold: () => void;
   onHangup: () => void;
   className?: string;
+  holdPending?: boolean;
 }
 
 export function CallControls({
@@ -60,6 +61,7 @@ export function CallControls({
   onToggleMute,
   onToggleHold,
   onHangup,
+  holdPending = false,
   className,
 }: CallControlsProps) {
   const muted = state === "MUTED";
@@ -78,14 +80,14 @@ export function CallControls({
         icon={muted ? MicOff : Mic}
         label={muted ? "Unmute" : "Mute"}
         active={muted}
-        disabled={disabled}
+        disabled={disabled || held || holdPending}
         onClick={onToggleMute}
       />
       <ControlButton
         icon={held ? Play : Pause}
-        label={held ? "Resume" : "Hold"}
+        label={holdPending ? "Please wait…" : held ? "Resume" : "Hold"}
         active={held}
-        disabled={disabled}
+        disabled={disabled || holdPending || state === "RINGING" || state === "CONNECTING"}
         onClick={onToggleHold}
       />
       <Button

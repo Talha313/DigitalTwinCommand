@@ -24,6 +24,7 @@ from app.db.models.call import Call
 from app.db.models.enums import CallStatus
 from app.db.session import session_scope
 from app.providers.elevenlabs import elevenlabs_client
+from app.realtime.bridge import registry
 from app.worker.queue import enqueue
 
 log = get_logger(__name__)
@@ -61,6 +62,10 @@ async def elevenlabs_webhook(request: Request) -> Response:
         ).scalar_one_or_none()
         if call is None:
             log.info("post-call webhook for unknown conversation %s", conversation_id)
+            return Response(status_code=204)
+        live = registry.get(str(call.id))
+        if live is not None and not live._closing:
+            # An agent conversation can expire while the telephone call is held.
             return Response(status_code=204)
         if summary := analysis.get("transcript_summary"):
             call.summary = summary

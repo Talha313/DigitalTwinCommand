@@ -75,6 +75,10 @@ export function useLiveCall() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
+  const [holdPending, setHoldPending] = React.useState(false);
+  const holdPendingRef = React.useRef(false);
+  const statusVersionRef = React.useRef(0);
+
   const startedAtRef = React.useRef<number | null>(null);
   const resumeRef = React.useRef<CallState>("LISTENING");
   const streamRef = React.useRef<CallStreamHandle | null>(null);
@@ -93,7 +97,14 @@ export function useLiveCall() {
     (event: CallStreamEvent) => {
       switch (event.type) {
         case "status": {
-          if (event.status === "connected") {
+          if (["held", "connected", "muted", "ended"].includes(event.status)) {
+            statusVersionRef.current += 1;
+          }
+          if (event.status === "held") {
+            setState((current) => current === "ENDED" || current === "ENDING" ? current : "HOLD");
+          } else if (event.status === "muted") {
+            setState("MUTED");
+          } else if (event.status === "connected") {
             if (startedAtRef.current == null) startedAtRef.current = Date.now();
             setState("LISTENING");
           } else if (event.status === "listening") {
@@ -175,7 +186,7 @@ export function useLiveCall() {
       setError(null);
       startedAtRef.current = call.started_at ? new Date(call.started_at).getTime() : null;
       setSeconds(startedAtRef.current != null ? Math.floor((Date.now() - startedAtRef.current) / 1000) : 0);
-      setState(stateFromStatus(call.status));
+      setState(call.held ? "HOLD" : call.muted ? "MUTED" : stateFromStatus(call.status));
       streamRef.current = connectCallStream(call.id, { onEvent: handleEvent });
     },
     [disconnectStream, handleEvent],
@@ -290,18 +301,24 @@ export function useLiveCall() {
   }, [callId, state]);
 
   const toggleHold = React.useCallback(async () => {
-    if (!callId) return;
+    if (!callId || holdPendingRef.current) return;
     const willHold = state !== "HOLD";
+    holdPendingRef.current = true;
+    setHoldPending(true);
+    setError(null);
     try {
-      await holdCall(callId, willHold);
-      if (willHold) {
-        resumeRef.current = state === "MUTED" ? "LISTENING" : state;
-        setState("HOLD");
-      } else {
-        setState(resumeRef.current);
-      }
+      const version = statusVersionRef.current;
+      const call = await holdCall(callId, willHold);
+      if (version !== statusVersionRef.current) return;
+      setState((current) => {
+        if (current === "ENDED" || current === "ENDING") return current;
+        return call.held ? "HOLD" : call.muted ? "MUTED" : "LISTENING";
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to toggle hold.");
+    } finally {
+      holdPendingRef.current = false;
+      setHoldPending(false);
     }
   }, [callId, state]);
 
@@ -350,6 +367,7 @@ export function useLiveCall() {
     hangUp,
     toggleMute,
     toggleHold,
+    holdPending,
     sendWhisper,
   };
 }

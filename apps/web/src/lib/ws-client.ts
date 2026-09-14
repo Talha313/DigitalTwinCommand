@@ -8,7 +8,7 @@ const BASE_URL = (
 const WS_BASE_URL = BASE_URL.replace(/^http/, "ws");
 
 export type CallStreamEvent =
-  | { type: "status"; seq: number; status: "connected" | "ended" | "listening" | "speaking"; reason?: string }
+  | { type: "status"; seq: number; status: "connected" | "ended" | "listening" | "speaking" | "held" | "muted"; reason?: string }
   | { type: "transcript"; seq: number; speaker: "caller" | "twin" | "whisper"; text: string; timestamp: string }
   | { type: "transcript_correction"; seq: number; speaker: string; text: string }
   | {

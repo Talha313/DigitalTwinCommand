@@ -44,6 +44,9 @@ class CallService(Service):
     async def _read(self, call: Call) -> CallRead:
         data = CallRead.model_validate(call)
         data.role_ids = await self._role_ids(call.id)
+        live = registry.get(str(call.id))
+        data.held = live.held if live else False
+        data.muted = live.muted if live else False
         return data
 
     async def list_calls(self, *, limit: int = 100, offset: int = 0) -> list[CallRead]:
@@ -144,15 +147,32 @@ class CallService(Service):
 
     async def hold(self, call_id: str, *, held: bool = True) -> CallRead:
         call = await self._get(Call, call_id, label="Call")
-        if call.twilio_sid and twilio_client.configured:
+        if not call.twilio_sid or not twilio_client.configured:
+            raise ValidationError("Call is not connected to Twilio.")
+        sess = registry.get(str(call.id))
+        if sess is None or sess._closing:
+            raise ConflictError("This call is not live.")
+        async with sess.control_lock:
+            if held == sess.held:
+                return await self._read(call)
             if held:
-                await twilio_client.redirect_to_hold(
-                    call.twilio_sid, f"{settings.public_base}/twilio/hold"
-                )
+                # Set before redirecting: Twilio can stop the stream before
+                # the REST update returns.
+                sess.held = True
+                try:
+                    await twilio_client.redirect_to_hold(
+                        call.twilio_sid, f"{settings.public_base}/twilio/hold"
+                    )
+                except Exception:
+                    sess.held = False
+                    raise
+                if not sess._closing:
+                    sess._publish("status", status="held")
             else:
+                # Keep held until the replacement media stream attaches.
                 await twilio_client.update_call(
                     call.twilio_sid,
-                    Url=f"{settings.public_base}/twilio/voice?call_id={call.id}",
+                    Url=f"{settings.public_base}/twilio/voice?call_id={call.id}&resume=true",
                     Method="POST",
                 )
         return await self._read(call)

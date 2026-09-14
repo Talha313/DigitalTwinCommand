@@ -54,6 +54,8 @@ class CallSession:
         self._pump_task: asyncio.Task | None = None
         self._closing = False
         self.muted = False
+        self.held = False
+        self.control_lock = asyncio.Lock()
         self._to_agent = twilio_to_agent("ulaw_8000")
         self._to_twilio = agent_to_twilio("ulaw_8000")
 
@@ -73,6 +75,8 @@ class CallSession:
         # μ-law 8 kHz, and warn if prompt overrides are disabled (then the
         # role-based system prompt below is ignored by ElevenLabs).
         prompt_override_ok = True
+        language_override_ok = True
+        first_message_override_ok = True
         try:
             agent_cfg = await elevenlabs_client.agent()
             cfg = agent_cfg.get("conversation_config", {})
@@ -137,7 +141,7 @@ class CallSession:
             return
         self._closing = True
         self._publish("status", status="ended", reason=reason)
-        if self._pump_task:
+        if self._pump_task and self._pump_task is not asyncio.current_task():
             self._pump_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._pump_task
@@ -152,14 +156,20 @@ class CallSession:
     # --- Twilio -> ElevenLabs -----------------------------------------
 
     async def on_twilio_media(self, payload_b64: str) -> None:
-        if self.eleven_ws is None or self._closing or self.muted:
+        if self.eleven_ws is None or self._closing or self.muted or self.held:
             return
         chunk = self._to_agent.convert_b64(payload_b64)
         with contextlib.suppress(ConnectionClosed):
             await self.eleven_ws.send(json.dumps({"user_audio_chunk": chunk}))
 
-    async def on_twilio_stop(self) -> None:
-        await self.close(reason="caller_hangup")
+    async def on_twilio_stop(self, ws: Any = None) -> None:
+        # A previous stream may finish after the resumed stream attaches.
+        if ws is not None and ws is not self.twilio_ws:
+            return
+        self.twilio_ws = None
+        self.stream_sid = None
+        if not self.held:
+            await self.close(reason="caller_hangup")
 
     # --- ElevenLabs -> Twilio + transcript ---------------------------
 
@@ -175,7 +185,9 @@ class CallSession:
             log.exception("eleven pump crashed call=%s", self.call_id)
         finally:
             if not self._closing:
-                await self.close(reason="agent_disconnect")
+                self.eleven_ws = None
+                if not self.held:
+                    await self.close(reason="agent_disconnect")
 
     async def _handle_eleven(self, msg: dict[str, Any]) -> None:
         mtype = msg.get("type")
@@ -203,7 +215,7 @@ class CallSession:
                 self.twilio_ws is not None,
                 self.stream_sid,
             )
-            if audio and self.twilio_ws is not None and self.stream_sid:
+            if audio and not self.held and self.twilio_ws is not None and self.stream_sid:
                 payload = self._to_twilio.convert_b64(audio)
                 try:
                     await self.twilio_ws.send_text(
@@ -268,7 +280,7 @@ class CallSession:
     # --- whisper injection ------------------------------------------
 
     async def inject_whisper(self, whisper_id: str, text: str, kind: WhisperKind) -> None:
-        if self.eleven_ws is None or self._closing:
+        if self.eleven_ws is None or self._closing or self.held:
             raise RuntimeError("Call is not connected.")
         if kind == WhisperKind.USER_MESSAGE:
             frame = {"type": "user_message", "text": text}
@@ -387,4 +399,8 @@ async def get_or_create_session(
         await sess.start()
     else:
         sess.attach_twilio(ws, stream_sid)
+        if sess.eleven_ws is None:
+            await sess.start()
+        sess.held = False
+        sess._publish("status", status="muted" if sess.muted else "connected")
     return sess

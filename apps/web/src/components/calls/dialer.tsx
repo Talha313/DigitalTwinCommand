@@ -76,7 +76,7 @@ export function Dialer({ onDial, lastCall = null }: DialerProps) {
       </div>
 
       <p className="mt-3 text-center text-[11px] text-muted-foreground">
-        UI preview — not connected to Twilio.
+        Enter a phone number to start a call.
       </p>
     </div>
   );

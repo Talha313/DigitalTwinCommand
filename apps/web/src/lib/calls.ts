@@ -20,6 +20,8 @@ export type BackendWhisperStatus = "queued" | "injected" | "spoken" | "failed";
 export type WhisperKind = "contextual_update" | "user_message";
 
 export interface CallRead {
+  held: boolean;
+  muted: boolean;
   id: string;
   user_id: string | null;
   direction: BackendCallDirection;

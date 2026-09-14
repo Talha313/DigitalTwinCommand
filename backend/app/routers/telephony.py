@@ -34,7 +34,9 @@ async def _validate(request: Request, params: dict[str, str]) -> bool:
 
 
 @router.post("/voice")
-async def voice(request: Request, call_id: str = "", first_message: str = "") -> Response:
+async def voice(
+    request: Request, call_id: str = "", first_message: str = "", resume: bool = False
+) -> Response:
     """Answer webhook — returns the <Stream> TwiML that bridges media to us."""
     form = dict((await request.form()).items())  # type: ignore[arg-type]
     if not await _validate(request, form):
@@ -73,7 +75,7 @@ async def voice(request: Request, call_id: str = "", first_message: str = "") ->
     # (recording processing finishes after the call itself does) — it only
     # ever posts it to a dedicated RecordingStatusCallback, so that's what
     # /twilio/recording-status below is for.
-    if twilio_sid and twilio_client.configured:
+    if twilio_sid and twilio_client.configured and not resume:
         try:
             await twilio_client.start_recording(
                 twilio_sid,
@@ -118,7 +120,7 @@ async def status_callback(request: Request, call_id: str = "") -> Response:
                 call.status = mapping[call_status]
                 if form.get("CallDuration"):
                     call.duration_seconds = int(form["CallDuration"])
-        if call_status in {"completed", "failed", "no-answer", "canceled"}:
+        if call_status in {"completed", "failed", "no-answer", "canceled", "busy"}:
             sess = registry.get(call_id)
             if sess is not None:
                 await sess.close(reason=f"twilio_{call_status}")
@@ -192,7 +194,7 @@ async def media_stream(ws: WebSocket) -> None:
         log.exception("media stream error call=%s", call_id)
     finally:
         if session_obj is not None:
-            await session_obj.on_twilio_stop()
+            await session_obj.on_twilio_stop(ws)
 
 
 async def _call_context(call_id: str) -> tuple[list[str], str | None]:

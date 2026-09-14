@@ -30,6 +30,7 @@ export function LiveCallPanel() {
     hangUp,
     toggleMute,
     toggleHold,
+    holdPending,
     sendWhisper,
   } = useLiveCall();
 
@@ -112,6 +113,7 @@ export function LiveCallPanel() {
             state={state}
             onToggleMute={toggleMute}
             onToggleHold={toggleHold}
+            holdPending={holdPending}
             onHangup={hangUp}
           />
 
@@ -142,7 +144,7 @@ export function LiveCallPanel() {
             whispers={whispers}
             suggestions={suggestedWhispers}
             onSend={sendWhisper}
-            disabled={controlsDisabled}
+            disabled={controlsDisabled || state === "HOLD" || holdPending}
           />
         </div>
 
