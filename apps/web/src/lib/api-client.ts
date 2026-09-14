@@ -1,8 +1,9 @@
 /** Minimal fetch wrapper for the FastAPI backend. */
 
-const BASE_URL = (
+export const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
 ).replace(/\/$/, "");
+const BASE_URL = API_BASE_URL;
 
 export class ApiError extends Error {
   status: number;

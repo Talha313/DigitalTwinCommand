@@ -13,7 +13,7 @@ import {
   toUiStatus,
   type UiCallStatus,
 } from "@/lib/call-history";
-import { toUiDirection, type CallRead } from "@/lib/calls";
+import { recordingUrl, toUiDirection, type CallRead } from "@/lib/calls";
 
 import { OutcomeBadge } from "./outcome-badge";
 
@@ -102,9 +102,13 @@ export function CallMetadata({ call }: CallMetadataProps) {
         <Row label="Tool calls">{call.tool_call_count}</Row>
         <Row label="Recording">
           {call.recording_url ? (
-            <span className="text-muted-foreground">
-              Available (playback not wired)
-            </span>
+            <audio
+              controls
+              preload="none"
+              crossOrigin="use-credentials"
+              src={recordingUrl(call.id)}
+              className="h-8 w-full sm:w-64"
+            />
           ) : (
             <span className="text-muted-foreground">Not available</span>
           )}
