@@ -27,19 +27,19 @@ class Settings(BaseSettings):
     bootstrap_admin_email: str = "admin@example.com"
     bootstrap_admin_password: str = ""  # if set, an admin user is created on startup
 
-    # --- LLM (Anthropic direct — used for /chat, report research, grading) ---
-    # The live *phone* agent's LLM is Claude hosted natively by ElevenLabs and
-    # is configured in the ElevenLabs dashboard, not here.
+    # --- xAI Grok — the AI engine for /chat, report research + script, and
+    # grading. The live *phone* agent's LLM is Claude hosted natively by
+    # ElevenLabs and is configured in the ElevenLabs dashboard, not here. ---
+    xai_api_key: str = ""
+    xai_model: str = "grok-4.6"
+
+    # --- Anthropic (kept but unused by default — ANTHROPIC_API_KEY is not
+    # set; nothing in this codebase calls it while that's the case) ---
     anthropic_api_key: str = ""
     anthropic_chat_model: str = "claude-sonnet-5"
     anthropic_report_model: str = "claude-opus-5"
     anthropic_grader_model: str = "claude-haiku-4-5-20251001"
     anthropic_max_tokens: int = 4096
-
-    # --- xAI Grok (optional — daily-report X/Twitter research only; the live
-    # phone agent's search tool is configured directly in ElevenLabs, not here) --
-    xai_api_key: str = ""
-    xai_model: str = "grok-4.6"
 
     # --- ElevenLabs -------------------------------------------------------------
     elevenlabs_api_key: str = ""

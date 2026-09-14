@@ -42,7 +42,16 @@ async def test_conversation_crud(auth_client: AsyncClient) -> None:
     assert r.status_code == 404
 
 
-async def test_chat_stream_without_key_emits_error(auth_client: AsyncClient) -> None:
+async def test_chat_stream_without_key_emits_error(
+    auth_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Force "not configured" rather than relying on XAI_API_KEY being unset —
+    # it's genuinely set in this dev env's .env, which pydantic-settings reads
+    # regardless of the shell env, so this test would otherwise hit the real
+    # Grok API.
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "xai_api_key", "")
     async with auth_client.stream(
         "POST", "/api/chat/stream", json={"content": "hello"}
     ) as resp:
@@ -51,4 +60,4 @@ async def test_chat_stream_without_key_emits_error(auth_client: AsyncClient) -> 
         async for chunk in resp.aiter_text():
             body += chunk
     assert '"type": "start"' in body
-    assert '"type": "error"' in body  # ANTHROPIC_API_KEY unset in tests
+    assert '"type": "error"' in body  # XAI_API_KEY forced unset above

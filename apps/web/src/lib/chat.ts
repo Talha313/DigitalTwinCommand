@@ -147,7 +147,7 @@ export interface StreamChatHandle {
  * `data: {...}\n\n` frames, dispatching each parsed payload to `onEvent`.
  *
  * The backend always responds 200 and reports failures as an in-stream
- * `{type: "error"}` event (e.g. when ANTHROPIC_API_KEY is unset) — that is
+ * `{type: "error"}` event (e.g. when XAI_API_KEY is unset) — that is
  * not a wiring bug, just the model provider being unavailable. A genuine
  * network/auth failure before any bytes are parsed also surfaces as an
  * `{type: "error"}` event so callers only need one failure path.

@@ -32,7 +32,7 @@ export function listReports(): Promise<ReportListItem[]> {
 }
 
 export type IntegrationKey =
-  | "anthropic"
+  | "xai"
   | "elevenlabs"
   | "elevenlabs_agent"
   | "twilio"

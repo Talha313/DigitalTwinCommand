@@ -98,8 +98,8 @@ export function TwinStatusCard({ className }: { className?: string }) {
           <Field
             icon={Bot}
             label="AI engine"
-            value={health.integrations.anthropic ? "Ready" : "Not configured"}
-            tone={toneFor(health.integrations.anthropic)}
+            value={health.integrations.xai ? "Ready" : "Not configured"}
+            tone={toneFor(health.integrations.xai)}
           />
           <Field
             icon={Video}

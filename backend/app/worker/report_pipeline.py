@@ -1,6 +1,6 @@
 """The daily 10-minute market report pipeline (spec §8).
 
-research (Claude + web_search) -> script -> [approve] -> voice (ElevenLabs PVC)
+research (Grok + web_search) -> script -> [approve] -> voice (ElevenLabs PVC)
 -> avatar (HeyGen/D-ID) -> package (ffmpeg) -> upload (S3) -> READY
 """
 
@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from typing import Any
 
 from sqlalchemy import select
 
@@ -18,7 +17,6 @@ from app.db.models.enums import ReportJobStatus, ReportStage, ReportStatus
 from app.db.models.report import Report, ReportJob
 from app.db.session import session_scope
 from app.errors import AppError
-from app.providers.anthropic_client import anthropic_client
 from app.providers.elevenlabs import elevenlabs_client
 from app.providers.lipsync import lipsync_client
 from app.providers.storage import storage
@@ -44,17 +42,6 @@ _SCRIPT_SYSTEM = (
     "1,250-1,500 spoken words (~10 minutes). Cite dates. If a number is "
     "uncertain, say so. Output the spoken script only — no headings, no notes."
 )
-
-
-def _report_llm() -> tuple[Any, str]:
-    """Anthropic is the primary reasoning engine; fall back to Grok (xAI) for
-    report research/scriptwriting when ANTHROPIC_API_KEY isn't set, so the
-    pipeline doesn't hard-depend on Anthropic being configured."""
-    if anthropic_client.configured:
-        return anthropic_client, settings.anthropic_report_model
-    if xai_client.configured:
-        return xai_client, settings.xai_model
-    return anthropic_client, settings.anthropic_report_model
 
 
 class ReportGone(AppError):
@@ -112,21 +99,14 @@ async def _set_status(report_id: str, status: ReportStatus, *, error: str | None
 async def research_and_script(report_id: str) -> ReportStatus:
     """Stages 1-2. Ends at SCRIPT_READY (or APPROVED if approval is off)."""
     await _require_report(report_id)
-    llm, model = _report_llm()
-    log.info(
-        "report %s using %s (%s) for research + script",
-        report_id,
-        llm.__class__.__name__,
-        model,
-    )
+    log.info("report %s using xAI (%s) for research + script", report_id, settings.xai_model)
     # --- research ---
     await _set_status(report_id, ReportStatus.RESEARCHING)
     await _stage(report_id, ReportStage.RESEARCH, ReportJobStatus.RUNNING)
     try:
-        res = await llm.complete(
+        res = await xai_client.complete(
             system=_RESEARCH_SYSTEM,
             messages=[{"role": "user", "content": "Prepare today's market brief."}],
-            model=model,
             web_search=True,
             max_tokens=4000,
         )
@@ -136,9 +116,9 @@ async def research_and_script(report_id: str) -> ReportStatus:
         await _set_status(report_id, ReportStatus.FAILED, error=exc.message)
         raise
 
-    # X/Twitter headlines — optional enrichment Claude's web_search can't
-    # reach. Never fails the report; if xAI is unset or errors, the brief
-    # just goes out without it.
+    # X/Twitter headlines — the main web_search tool above doesn't reach X.
+    # Never fails the report; if this call errors, the brief just goes out
+    # without it.
     x_search_trace: dict | None = None
     if xai_client.configured:
         try:
@@ -164,7 +144,7 @@ async def research_and_script(report_id: str) -> ReportStatus:
     # --- script ---
     await _stage(report_id, ReportStage.SCRIPT, ReportJobStatus.RUNNING)
     try:
-        script_res = await llm.complete(
+        script_res = await xai_client.complete(
             system=_SCRIPT_SYSTEM,
             messages=[
                 {
@@ -172,7 +152,6 @@ async def research_and_script(report_id: str) -> ReportStatus:
                     "content": f"Today's brief:\n{json.dumps(brief, indent=2)}",
                 }
             ],
-            model=model,
             max_tokens=6000,
         )
     except AppError as exc:

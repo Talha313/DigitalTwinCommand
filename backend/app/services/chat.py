@@ -9,7 +9,7 @@ from app.db.session import session_scope
 from app.errors import AppError
 from app.models.chat import ChatRequest
 from app.models.conversations import ConversationCreate, MessageCreate
-from app.providers.anthropic_client import anthropic_client
+from app.providers.xai_client import xai_client
 from app.services.conversations import ConversationService
 from app.services.prompting import build_system_prompt
 from app.services.roles import load_roles_for_prompt
@@ -37,7 +37,7 @@ class ChatService:
 
         chunks: list[str] = []
         try:
-            async for delta in anthropic_client.stream_chat(
+            async for delta in xai_client.stream_chat(
                 system=system,
                 messages=history,
                 temperature=0.7,

@@ -49,7 +49,7 @@ class ForbiddenError(AppError):
 
 
 class UpstreamError(AppError):
-    """A third-party provider (Twilio / ElevenLabs / Anthropic / ...) failed."""
+    """A third-party provider (Twilio / ElevenLabs / xAI / ...) failed."""
 
     status_code = 502
     code = "upstream_error"
