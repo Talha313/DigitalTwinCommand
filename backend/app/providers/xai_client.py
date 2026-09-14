@@ -17,9 +17,12 @@ from app.providers.http import shared_client
 log = get_logger(__name__)
 
 _BASE = "https://api.x.ai/v1"
-# x_search regularly takes 30-45s (multiple search + page-read round trips) —
-# well past the shared client's default 30s timeout.
-_TIMEOUT = httpx.Timeout(90.0, connect=10.0)
+# Grok's default reasoning effort makes even non-search calls slow — a plain
+# script-writing call (no search, ~6000 output tokens) has been observed
+# taking 300s+ and still timing out at 180s. This client is only used by the
+# async daily-report worker (never the live call), where a few extra minutes
+# costs nothing, so the timeout is generous on purpose.
+_TIMEOUT = httpx.Timeout(600.0, connect=10.0)
 
 
 class XAIClient:

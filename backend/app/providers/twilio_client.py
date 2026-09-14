@@ -73,6 +73,23 @@ class TwilioClient:
     async def hangup(self, call_sid: str) -> None:
         await self.update_call(call_sid, Status="completed")
 
+    async def start_recording(self, call_sid: str, **data: Any) -> dict[str, Any]:
+        """Record an in-progress call. This is its own sub-resource — unlike
+        Status/Url, `Record`/`RecordingChannels`/`RecordingStatusCallback` are
+        NOT recognized fields on the Update-a-Call endpoint above; Twilio just
+        silently no-ops there (200 OK, no error, no recording)."""
+        sid, token = self._auth()
+        try:
+            resp = await shared_client().post(
+                f"{_API}/Accounts/{sid}/Calls/{call_sid}/Recordings.json",
+                auth=(sid, token),
+                data={k: v for k, v in data.items() if v is not None},
+            )
+            resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise UpstreamError(f"Twilio start recording failed: {exc}") from exc
+        return resp.json()
+
     async def redirect_to_hold(self, call_sid: str, hold_url: str) -> None:
         await self.update_call(call_sid, Url=hold_url, Method="POST")
 

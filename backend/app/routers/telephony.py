@@ -65,6 +65,25 @@ async def voice(request: Request, call_id: str = "", first_message: str = "") ->
             call.twilio_sid = call.twilio_sid or twilio_sid
             call.status = CallStatus.IN_PROGRESS
 
+    # Record every call by default. Twilio recording runs independently of
+    # whatever TwiML verb is active, so starting it here (rather than via
+    # <Record>, which would block <Connect><Stream>) works for both legs —
+    # this same handler answers inbound calls and the outbound answer_url.
+    # Twilio never includes RecordingUrl on the regular call StatusCallback
+    # (recording processing finishes after the call itself does) — it only
+    # ever posts it to a dedicated RecordingStatusCallback, so that's what
+    # /twilio/recording-status below is for.
+    if twilio_sid and twilio_client.configured:
+        try:
+            await twilio_client.start_recording(
+                twilio_sid,
+                RecordingChannels="dual",
+                RecordingStatusCallback=f"{settings.public_base}/twilio/recording-status?call_id={call_id}",
+                RecordingStatusCallbackEvent="completed",
+            )
+        except Exception:
+            log.warning("failed to start recording for call sid=%s", twilio_sid)
+
     stream_url = f"{settings.ws_host}/twilio/media"
     return _twiml(twilio_client.stream_twiml(stream_url, call_id=call_id))
 
@@ -99,12 +118,28 @@ async def status_callback(request: Request, call_id: str = "") -> Response:
                 call.status = mapping[call_status]
                 if form.get("CallDuration"):
                     call.duration_seconds = int(form["CallDuration"])
-                if form.get("RecordingUrl"):
-                    call.recording_url = form["RecordingUrl"]
         if call_status in {"completed", "failed", "no-answer", "canceled"}:
             sess = registry.get(call_id)
             if sess is not None:
                 await sess.close(reason=f"twilio_{call_status}")
+    return Response(status_code=204)
+
+
+@router.post("/recording-status")
+async def recording_status_callback(request: Request, call_id: str = "") -> Response:
+    """RecordingStatusCallback — the only place Twilio actually delivers
+    RecordingUrl. Fired once the (dual-channel) recording has finished
+    processing, which is typically a few seconds after the call's own
+    "completed" /twilio/status callback."""
+    form = dict((await request.form()).items())  # type: ignore[arg-type]
+    if not await _validate(request, form):
+        return Response(status_code=403)
+
+    if call_id and form.get("RecordingStatus") == "completed" and form.get("RecordingUrl"):
+        async with session_scope() as session:
+            call = await session.get(Call, as_uuid(call_id))
+            if call is not None:
+                call.recording_url = form["RecordingUrl"]
     return Response(status_code=204)
 
 
