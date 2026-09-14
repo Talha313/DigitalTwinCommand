@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.core.logging import get_logger
+from app.db.models.call import Call
 from app.db.models.enums import (
     MemorySourceType,
     MemoryStatus,
@@ -16,6 +18,8 @@ from app.db.models.memory import Memory
 from app.db.models.report import Report
 from app.db.models.user import User
 from app.db.session import session_scope
+from app.providers.storage import key_from_url, storage
+from app.providers.twilio_client import twilio_client
 from app.providers.xai_client import xai_client
 from app.services.base import as_uuid
 from app.services.notifications import create_notifications
@@ -184,3 +188,59 @@ async def _page_operators(report_id: str, message: str) -> None:
     await notify_users(op_ids, payload)
     await create_notifications(op_ids, **payload)
     log.info("paged operators: %s", message)
+
+
+async def purge_old_media(ctx: dict[str, Any]) -> None:
+    """Daily retention job (spec §12: "retain 30 days until Howie says
+    otherwise") — deletes raw audio/video older than RETENTION_DAYS: call
+    recordings (from Twilio) and report audio/video (from our own storage).
+    Transcripts, scripts, and briefs are untouched — they're the training
+    archive (§1), not "raw audio," and are kept indefinitely."""
+    cutoff = datetime.now(UTC) - timedelta(days=settings.retention_days)
+
+    async with session_scope() as session:
+        calls = (
+            await session.execute(
+                select(Call).where(Call.recording_url.is_not(None), Call.created_at < cutoff)
+            )
+        ).scalars().all()
+        purged = 0
+        for call in calls:
+            try:
+                await twilio_client.delete_recording(call.recording_url)
+            except Exception:
+                log.warning("failed to delete Twilio recording for call %s", call.id)
+                continue
+            call.recording_url = None
+            purged += 1
+    if purged:
+        log.info("purge_old_media: deleted %d call recording(s)", purged)
+
+    async with session_scope() as session:
+        reports = (
+            await session.execute(
+                select(Report).where(
+                    Report.created_at < cutoff,
+                    (Report.audio_url.is_not(None))
+                    | (Report.video_16x9.is_not(None))
+                    | (Report.video_9x16.is_not(None)),
+                )
+            )
+        ).scalars().all()
+        purged = 0
+        for report in reports:
+            for attr in ("audio_url", "video_16x9", "video_9x16"):
+                url = getattr(report, attr)
+                if not url:
+                    continue
+                key = key_from_url(url)
+                if key:
+                    try:
+                        await storage.delete(key)
+                    except Exception:
+                        log.warning("failed to delete %s for report %s", attr, report.id)
+                        continue
+                setattr(report, attr, None)
+            purged += 1
+    if purged:
+        log.info("purge_old_media: cleared media for %d report(s)", purged)

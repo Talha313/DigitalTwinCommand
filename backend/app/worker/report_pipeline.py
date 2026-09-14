@@ -44,6 +44,13 @@ _SCRIPT_SYSTEM = (
 )
 
 
+def _cost_cents(usage: dict) -> int:
+    """xAI reports the exact billed cost per request as cost_in_usd_ticks,
+    where 1 USD = 10^10 ticks — no pricing table to keep in sync."""
+    ticks = usage.get("cost_in_usd_ticks") or 0
+    return round(ticks / 1e10 * 100)
+
+
 class ReportGone(AppError):
     """The report row was deleted while a job for it was still queued."""
 
@@ -116,6 +123,8 @@ async def research_and_script(report_id: str) -> ReportStatus:
         await _set_status(report_id, ReportStatus.FAILED, error=exc.message)
         raise
 
+    cost_cents = _cost_cents(res.get("usage", {}))
+
     # X/Twitter headlines — the main web_search tool above doesn't reach X.
     # Never fails the report; if this call errors, the brief just goes out
     # without it.
@@ -126,6 +135,7 @@ async def research_and_script(report_id: str) -> ReportStatus:
                 "What is being said on X/Twitter today about markets, stocks, "
                 "rates, and the economy? Summarize the most notable posts."
             )
+            cost_cents += _cost_cents(x_res.get("usage", {}))
             if x_res["text"]:
                 brief["social_headlines"] = x_res["text"]
                 x_search_trace = {"citations": x_res["citations"], "model": x_res.get("model")}
@@ -158,11 +168,16 @@ async def research_and_script(report_id: str) -> ReportStatus:
         await _stage(report_id, ReportStage.SCRIPT, ReportJobStatus.FAILED, error=exc.message)
         await _set_status(report_id, ReportStatus.FAILED, error=exc.message)
         raise
+    cost_cents += _cost_cents(script_res.get("usage", {}))
     async with session_scope() as session:
         report = await session.get(Report, as_uuid(report_id))
         if report is None:
             raise ReportGone(f"Report {report_id} no longer exists.")
         report.script = script_res["text"]
+        # LLM (research + x_search + script) cost only — ElevenLabs TTS and
+        # avatar-video don't return per-request cost the way xAI does, so
+        # this is a real, exact figure for the Grok side, not a full total.
+        report.cost_cents = cost_cents
     await _stage(report_id, ReportStage.SCRIPT, ReportJobStatus.COMPLETED)
 
     if settings.report_approval_required:
