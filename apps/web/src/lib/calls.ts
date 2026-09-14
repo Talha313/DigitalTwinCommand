@@ -1,5 +1,5 @@
 /** Calls + whispers API calls. Types mirror backend/app/models/calls.py. */
-import { apiFetch } from "./api-client";
+import { API_BASE_URL, apiFetch } from "./api-client";
 import type {
   CallDirection as UiCallDirection,
   UtteranceSpeaker,
@@ -92,6 +92,16 @@ export function getCall(callId: string): Promise<CallRead> {
 
 export function getTranscript(callId: string): Promise<UtteranceRead[]> {
   return apiFetch<UtteranceRead[]>(`/api/calls/${callId}/transcript`);
+}
+
+/**
+ * The backend proxies this (Twilio recording media needs the account's own
+ * Basic Auth, which never belongs in the browser) — an <audio> element can
+ * point straight at it as long as it's marked `crossOrigin="use-credentials"`
+ * so the session cookie rides along cross-origin.
+ */
+export function recordingUrl(callId: string): string {
+  return `${API_BASE_URL}/api/calls/${callId}/recording`;
 }
 
 /** The most recent call still in a non-terminal status, if any. */

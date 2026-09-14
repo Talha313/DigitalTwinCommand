@@ -93,6 +93,21 @@ class TwilioClient:
     async def redirect_to_hold(self, call_sid: str, hold_url: str) -> None:
         await self.update_call(call_sid, Url=hold_url, Method="POST")
 
+    async def fetch_recording(self, recording_url: str) -> tuple[bytes, str]:
+        """Recording media URLs are Twilio API resources, not public files —
+        they need the same account SID/auth token Basic Auth as every other
+        Twilio API call, plus a format extension Twilio doesn't include by
+        default. Call recordings are short, so buffering the whole file
+        (rather than a true streaming proxy) is simplest."""
+        sid, token = self._auth()
+        url = recording_url if recording_url.endswith((".mp3", ".wav")) else f"{recording_url}.mp3"
+        try:
+            resp = await shared_client().get(url, auth=(sid, token))
+            resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise UpstreamError(f"Twilio recording fetch failed: {exc}") from exc
+        return resp.content, resp.headers.get("content-type", "audio/mpeg")
+
     # --- TwiML ---------------------------------------------------------
 
     @staticmethod
