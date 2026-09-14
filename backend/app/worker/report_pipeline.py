@@ -179,10 +179,11 @@ def _report_key(report) -> str:
 async def render(report_id: str) -> None:
     """Stages 4-7: voice -> avatar -> package -> upload.
 
-    With ``LIPSYNC_PROVIDER=elevenlabs`` there is no public avatar-video API, so
-    the pipeline produces the audio + captions and then parks the report at
-    ``AWAITING_AVATAR`` for an operator to render in ElevenCreative and upload
-    via ``POST /api/reports/{id}/avatar``. ``heygen`` / ``did`` run end-to-end.
+    ``heygen`` / ``did`` / a configured ``elevenlabs`` (ELEVENLABS_API_KEY +
+    DID_SOURCE_URL — see lipsync.py) run end-to-end automatically. Only an
+    unconfigured ``elevenlabs`` parks the report at ``AWAITING_AVATAR`` for an
+    operator to render in ElevenCreative and upload via
+    ``POST /api/reports/{id}/avatar``.
     """
     await _require_report(report_id)
     await _set_status(report_id, ReportStatus.GENERATING)
@@ -214,7 +215,7 @@ async def render(report_id: str) -> None:
 
     # --- avatar ---
     await _stage(report_id, ReportStage.AVATAR, ReportJobStatus.RUNNING)
-    if lipsync_client.provider == "elevenlabs":
+    if lipsync_client.provider == "elevenlabs" and not lipsync_client.automated:
         await _stage(
             report_id,
             ReportStage.AVATAR,
@@ -222,13 +223,18 @@ async def render(report_id: str) -> None:
             error="Awaiting manual render in ElevenCreative — audio + captions ready.",
         )
         await _set_status(report_id, ReportStatus.AWAITING_AVATAR)
-        log.info("report %s AWAITING_AVATAR (elevenlabs provider)", report_id)
+        log.info("report %s AWAITING_AVATAR (elevenlabs not configured)", report_id)
         return
 
     results: dict[str, str] = {}
-    for aspect in ("16x9", "9x16"):
-        raw_video_url = await lipsync_client.render(audio_url=audio_url, aspect=aspect)
-        results[aspect] = raw_video_url
+    try:
+        for aspect in ("16x9", "9x16"):
+            raw_video_url = await lipsync_client.render(audio_url=audio_url, aspect=aspect)
+            results[aspect] = raw_video_url
+    except AppError as exc:
+        await _stage(report_id, ReportStage.AVATAR, ReportJobStatus.FAILED, error=exc.message)
+        await _set_status(report_id, ReportStatus.FAILED, error=exc.message)
+        raise
     await _stage(report_id, ReportStage.AVATAR, ReportJobStatus.COMPLETED)
     await finalize_from_videos(report_id, results, srt_text=srt_text)
 
