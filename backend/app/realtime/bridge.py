@@ -105,8 +105,7 @@ class CallSession:
         except Exception:
             log.warning("could not read agent config; assuming ulaw_8000 + overrides on")
 
-        signed_url = await elevenlabs_client.get_signed_url()
-        self.eleven_ws = await websockets.connect(signed_url, max_size=None)
+        self.eleven_ws = await self._connect_eleven()
         # Only send overrides the agent's Security -> Overrides settings actually
         # permit. ElevenLabs doesn't ignore a disallowed override field — it stalls
         # the whole conversation after the initial handshake instead of ever
@@ -131,6 +130,28 @@ class CallSession:
         self._pump_task = asyncio.create_task(self._pump_eleven())
         self._publish("status", status="connected")
         await self._set_call_status(CallStatus.IN_PROGRESS, started=True)
+
+    async def _connect_eleven(self, attempts: int = 2) -> Any:
+        """A cold/slow handshake on ElevenLabs' side previously killed the
+        whole call outright on the default 10s timeout with zero retry, even
+        though Twilio and our own server were fine. Re-fetch a fresh signed
+        URL per attempt — it's a short-lived token, not safe to reuse."""
+        last_exc: Exception | None = None
+        for attempt in range(1, attempts + 1):
+            try:
+                signed_url = await elevenlabs_client.get_signed_url()
+                return await websockets.connect(signed_url, max_size=None, open_timeout=15)
+            except TimeoutError as exc:
+                last_exc = exc
+                log.warning(
+                    "call %s: ElevenLabs WS handshake timed out (attempt %d/%d)",
+                    self.call_id,
+                    attempt,
+                    attempts,
+                )
+                if attempt < attempts:
+                    await asyncio.sleep(1)
+        raise last_exc  # type: ignore[misc]
 
     def attach_twilio(self, ws: Any, stream_sid: str) -> None:
         self.twilio_ws = ws
