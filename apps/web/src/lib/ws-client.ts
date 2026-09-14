@@ -45,7 +45,8 @@ export function connectCallStream(
 
   function open() {
     const token = getAccessToken() ?? "";
-    const url = `${WS_BASE_URL}/ws/calls/${callId}?token=${encodeURIComponent(token)}&after=${lastSeq}`;
+    const base = WS_BASE_URL || window.location.origin.replace(/^http/, "ws");
+    const url = `${base}/ws/calls/${callId}?token=${encodeURIComponent(token)}&after=${lastSeq}`;
     socket = new WebSocket(url);
 
     socket.onopen = () => {
