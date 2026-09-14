@@ -1,15 +1,23 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 
 import { RiskBadge } from "@/components/roles/risk-badge";
 import { RoleBadge } from "@/components/dashboard/role-badge";
-import { combinedRisk, rolesByIds } from "@/lib/role-context";
+import { useCombinedRisk, useRolesByIds } from "@/lib/role-context";
 import { formatDuration } from "@/lib/format";
-import type { CallHistoryEntry, CallStatus } from "@/lib/mock-data/types";
+import {
+  callTimestamp,
+  formatCallTimestamp,
+  toUiStatus,
+  type UiCallStatus,
+} from "@/lib/call-history";
+import { recordingUrl, toUiDirection, type CallRead } from "@/lib/calls";
 
 import { OutcomeBadge } from "./outcome-badge";
 
-const STATUS_LABEL: Record<CallStatus, string> = {
+const STATUS_LABEL: Record<UiCallStatus, string> = {
   completed: "Completed",
   missed: "Missed",
   "in-progress": "In progress",
@@ -34,42 +42,43 @@ function Row({
 }
 
 export interface CallMetadataProps {
-  call: CallHistoryEntry;
+  call: CallRead;
 }
 
 export function CallMetadata({ call }: CallMetadataProps) {
-  const roles = rolesByIds(call.roleIds);
-  const DirectionIcon =
-    call.direction === "inbound" ? ArrowDownLeft : ArrowUpRight;
+  const roles = useRolesByIds(call.role_ids);
+  const combinedRiskLevel = useCombinedRisk(call.role_ids);
+  const direction = toUiDirection(call.direction);
+  const DirectionIcon = direction === "inbound" ? ArrowDownLeft : ArrowUpRight;
 
   return (
     <div className="space-y-4">
-      <p className="rounded-lg border border-border/50 bg-background/40 p-3 text-sm text-muted-foreground">
-        {call.summary}
-      </p>
+      {call.summary ? (
+        <p className="rounded-lg border border-border/50 bg-background/40 p-3 text-sm text-muted-foreground">
+          {call.summary}
+        </p>
+      ) : null}
 
       <dl>
         <Row label="Direction">
           <span className="inline-flex items-center gap-1.5">
             <DirectionIcon className="h-3.5 w-3.5" aria-hidden />
-            {call.direction === "inbound" ? "Inbound" : "Outbound"}
+            {direction === "inbound" ? "Inbound" : "Outbound"}
           </span>
         </Row>
         <Row label="From">
-          <span className="font-mono text-xs">{call.fromNumber}</span>
+          <span className="font-mono text-xs">{call.from_e164 ?? "—"}</span>
         </Row>
         <Row label="To">
-          <span className="font-mono text-xs">{call.toNumber}</span>
+          <span className="font-mono text-xs">{call.to_e164 ?? "—"}</span>
         </Row>
-        <Row label="Started">
-          {call.dateLabel}, {call.startedAtLabel}
-        </Row>
+        <Row label="Started">{formatCallTimestamp(callTimestamp(call))}</Row>
         <Row label="Duration">
           <span className="font-mono tabular-nums">
-            {formatDuration(call.durationSeconds)}
+            {formatDuration(call.duration_seconds ?? 0)}
           </span>
         </Row>
-        <Row label="Status">{STATUS_LABEL[call.status]}</Row>
+        <Row label="Status">{STATUS_LABEL[toUiStatus(call.status)]}</Row>
         <Row label="Outcome">
           <OutcomeBadge outcome={call.outcome} />
         </Row>
@@ -80,7 +89,7 @@ export function CallMetadata({ call }: CallMetadataProps) {
                 {roles.map((role) => (
                   <RoleBadge key={role.id} name={role.name} />
                 ))}
-                <RiskBadge level={combinedRisk(call.roleIds)} showLabel={false} />
+                <RiskBadge level={combinedRiskLevel} showLabel={false} />
               </>
             ) : (
               <span className="text-muted-foreground">None</span>
@@ -88,27 +97,30 @@ export function CallMetadata({ call }: CallMetadataProps) {
           </span>
         </Row>
         <Row label="AI model">
-          <span className="font-mono text-xs">{call.model}</span>
+          <span className="font-mono text-xs">{call.model ?? "—"}</span>
         </Row>
-        <Row label="Tool calls">{call.toolCalls}</Row>
-        <Row label="Whispers">{call.whispers.length}</Row>
+        <Row label="Tool calls">{call.tool_call_count}</Row>
         <Row label="Recording">
-          {call.recordingAvailable ? (
-            <span className="text-muted-foreground">
-              Available (playback not wired)
-            </span>
+          {call.recording_url ? (
+            <audio
+              controls
+              preload="none"
+              crossOrigin="use-credentials"
+              src={recordingUrl(call.id)}
+              className="h-8 w-full sm:w-64"
+            />
           ) : (
             <span className="text-muted-foreground">Not available</span>
           )}
         </Row>
         <Row label="Twilio SID">
           <span className="font-mono text-[11px] text-muted-foreground">
-            {call.twilioSid}
+            {call.twilio_sid ?? "—"}
           </span>
         </Row>
         <Row label="ElevenLabs conversation">
           <span className="font-mono text-[11px] text-muted-foreground">
-            {call.elevenConversationId}
+            {call.eleven_conversation_id ?? "—"}
           </span>
         </Row>
       </dl>

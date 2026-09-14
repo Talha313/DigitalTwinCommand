@@ -6,12 +6,12 @@ from sqlalchemy import text
 from app.core.config import settings
 from app.db.session import engine
 from app.models.common import HealthResponse
-from app.providers.anthropic_client import anthropic_client
 from app.providers.elevenlabs import elevenlabs_client
 from app.providers.lipsync import lipsync_client
 from app.providers.push import push_client
 from app.providers.storage import storage
 from app.providers.twilio_client import twilio_client
+from app.providers.xai_client import xai_client
 
 router = APIRouter(tags=["system"])
 
@@ -29,13 +29,13 @@ async def health() -> HealthResponse:
         status="ok" if db_ok else "degraded",
         environment=settings.environment,
         call_llm=settings.elevenlabs_llm_label,
-        chat_llm=settings.anthropic_chat_model,
+        chat_llm=settings.xai_model,
         database=db_ok,
         lipsync=f"{lipsync_client.provider}"
         + ("" if lipsync_client.automated else " (manual upload)"),
         storage=storage.backend,
         integrations={
-            "anthropic": anthropic_client.configured,
+            "xai": xai_client.configured,
             "elevenlabs": elevenlabs_client.configured,
             "elevenlabs_agent": elevenlabs_client.agent_configured,
             "twilio": twilio_client.configured,

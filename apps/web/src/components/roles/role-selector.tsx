@@ -3,8 +3,8 @@
 import { Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { roles as defaultRoles } from "@/lib/mock-data/roles";
-import type { Role } from "@/lib/mock-data/types";
+import { useRolesContext } from "@/lib/role-context";
+import type { RoleRead } from "@/lib/roles";
 
 import { RiskBadge } from "./risk-badge";
 
@@ -12,7 +12,7 @@ export interface RoleSelectorProps {
   /** Selected role ids. */
   value: string[];
   onChange: (roleIds: string[]) => void;
-  roles?: Role[];
+  roles?: RoleRead[];
   legend?: string;
   description?: string;
   columns?: 1 | 2;
@@ -26,12 +26,15 @@ export interface RoleSelectorProps {
 export function RoleSelector({
   value,
   onChange,
-  roles = defaultRoles,
+  roles,
   legend = "Twin roles",
   description,
   columns = 2,
   className,
 }: RoleSelectorProps) {
+  const { roles: contextRoles } = useRolesContext();
+  const effectiveRoles = roles ?? contextRoles;
+
   const toggle = (id: string) => {
     onChange(
       value.includes(id) ? value.filter((v) => v !== id) : [...value, id],
@@ -51,7 +54,7 @@ export function RoleSelector({
           columns === 2 ? "sm:grid-cols-2" : "grid-cols-1",
         )}
       >
-        {roles.map((role) => {
+        {effectiveRoles.map((role) => {
           const checked = value.includes(role.id);
           return (
             <label
@@ -84,11 +87,13 @@ export function RoleSelector({
                 <span className="block text-sm font-medium text-foreground">
                   {role.name}
                 </span>
-                <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                  {role.personality.summary}
-                </span>
+                {role.personality?.summary ? (
+                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                    {role.personality.summary}
+                  </span>
+                ) : null}
                 <RiskBadge
-                  level={role.riskLevel}
+                  level={role.risk_level}
                   showLabel={false}
                   className="mt-1.5"
                 />

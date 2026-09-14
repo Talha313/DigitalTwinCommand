@@ -73,8 +73,54 @@ class TwilioClient:
     async def hangup(self, call_sid: str) -> None:
         await self.update_call(call_sid, Status="completed")
 
+    async def start_recording(self, call_sid: str, **data: Any) -> dict[str, Any]:
+        """Record an in-progress call. This is its own sub-resource — unlike
+        Status/Url, `Record`/`RecordingChannels`/`RecordingStatusCallback` are
+        NOT recognized fields on the Update-a-Call endpoint above; Twilio just
+        silently no-ops there (200 OK, no error, no recording)."""
+        sid, token = self._auth()
+        try:
+            resp = await shared_client().post(
+                f"{_API}/Accounts/{sid}/Calls/{call_sid}/Recordings.json",
+                auth=(sid, token),
+                data={k: v for k, v in data.items() if v is not None},
+            )
+            resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise UpstreamError(f"Twilio start recording failed: {exc}") from exc
+        return resp.json()
+
     async def redirect_to_hold(self, call_sid: str, hold_url: str) -> None:
         await self.update_call(call_sid, Url=hold_url, Method="POST")
+
+    async def delete_recording(self, recording_url: str) -> None:
+        """recording_url is the Recordings resource URL (RecordingUrl from
+        Twilio's callback) — its last path segment is the RecordingSid."""
+        sid, token = self._auth()
+        recording_sid = recording_url.rstrip("/").rsplit("/", 1)[-1]
+        try:
+            resp = await shared_client().delete(
+                f"{_API}/Accounts/{sid}/Recordings/{recording_sid}.json", auth=(sid, token)
+            )
+            if resp.status_code not in (204, 404):
+                resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise UpstreamError(f"Twilio delete recording failed: {exc}") from exc
+
+    async def fetch_recording(self, recording_url: str) -> tuple[bytes, str]:
+        """Recording media URLs are Twilio API resources, not public files —
+        they need the same account SID/auth token Basic Auth as every other
+        Twilio API call, plus a format extension Twilio doesn't include by
+        default. Call recordings are short, so buffering the whole file
+        (rather than a true streaming proxy) is simplest."""
+        sid, token = self._auth()
+        url = recording_url if recording_url.endswith((".mp3", ".wav")) else f"{recording_url}.mp3"
+        try:
+            resp = await shared_client().get(url, auth=(sid, token))
+            resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise UpstreamError(f"Twilio recording fetch failed: {exc}") from exc
+        return resp.content, resp.headers.get("content-type", "audio/mpeg")
 
     # --- TwiML ---------------------------------------------------------
 

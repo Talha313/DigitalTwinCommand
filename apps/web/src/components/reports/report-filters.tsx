@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { ReportGenerationStatus } from "@/lib/mock-data/reports";
+import type { ReportStatus } from "@/lib/reports";
 
 export type ReportFilterBucket =
   | "all"
@@ -10,29 +10,30 @@ export type ReportFilterBucket =
   | "awaiting_approval"
   | "failed";
 
-const IN_PROGRESS: ReportGenerationStatus[] = [
-  "QUEUED",
-  "RESEARCHING",
-  "SCRIPTING",
-  "GENERATING_AUDIO",
-  "GENERATING_VIDEO",
-  "PROCESSING_VIDEO",
-  "UPLOADING",
+/** Non-terminal statuses that aren't specifically "waiting on an operator to
+ * approve the script" — everything the pipeline is actively working through
+ * on its own. */
+const IN_PROGRESS: ReportStatus[] = [
+  "queued",
+  "researching",
+  "approved",
+  "generating",
+  "awaiting_avatar",
 ];
 
 export function matchesBucket(
-  status: ReportGenerationStatus,
+  status: ReportStatus,
   bucket: ReportFilterBucket,
 ): boolean {
   switch (bucket) {
     case "all":
       return true;
     case "ready":
-      return status === "READY";
+      return status === "ready";
     case "awaiting_approval":
-      return status === "AWAITING_APPROVAL";
+      return status === "script_ready";
     case "failed":
-      return status === "FAILED";
+      return status === "failed";
     case "in_progress":
       return IN_PROGRESS.includes(status);
     default:

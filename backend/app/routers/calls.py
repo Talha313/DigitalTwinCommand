@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
 
 from app.db.models.enums import UserRole
 from app.db.models.user import User
 from app.dependencies import current_user, require_role
+from app.errors import NotFoundError
 from app.models.calls import (
     CallOutcomeUpdate,
     CallRead,
@@ -12,6 +14,7 @@ from app.models.calls import (
     OutboundCallRequest,
 )
 from app.models.utterances import UtteranceRead
+from app.providers.twilio_client import twilio_client
 from app.services.calls import CallService, get_calls_service
 
 router = APIRouter(prefix="/calls", tags=["calls"])
@@ -43,6 +46,19 @@ async def get_call(
     service: CallService = Depends(get_calls_service),
 ) -> CallRead:
     return await service.get_call(call_id)
+
+
+@router.get("/{call_id}/recording")
+async def get_recording(
+    call_id: str,
+    _: User = Depends(current_user),
+    service: CallService = Depends(get_calls_service),
+) -> Response:
+    call = await service.get_call(call_id)
+    if not call.recording_url:
+        raise NotFoundError("No recording for this call.")
+    content, content_type = await twilio_client.fetch_recording(call.recording_url)
+    return Response(content=content, media_type=content_type)
 
 
 @router.get("/{call_id}/transcript", response_model=list[UtteranceRead])

@@ -1,9 +1,7 @@
 "use client";
 
 import {
-  FileBarChart,
   FileStack,
-  FileText,
   MessageSquareText,
   MessagesSquare,
   PhoneCall,
@@ -13,13 +11,9 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import {
-  SOURCE_LABEL,
-  type KnowledgeSourceId,
-  type MemoryApprovalStatus,
-} from "@/lib/mock-data/memory";
+import { SOURCE_LABEL, type MemorySourceType, type MemoryStatus } from "@/lib/memory";
 
-export type MemoryStatusFilter = "all" | MemoryApprovalStatus;
+export type MemoryStatusFilter = "all" | MemoryStatus;
 
 const STATUS_OPTIONS: { id: MemoryStatusFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -28,32 +22,23 @@ const STATUS_OPTIONS: { id: MemoryStatusFilter; label: string }[] = [
   { id: "rejected", label: "Rejected" },
 ];
 
-const SOURCE_ICON: Record<KnowledgeSourceId, LucideIcon> = {
+const SOURCE_ICON: Record<MemorySourceType, LucideIcon> = {
   chat: MessagesSquare,
   call: PhoneCall,
-  transcript: FileText,
   whisper: MessageSquareText,
-  report: FileBarChart,
   document: FileStack,
 };
 
-const SOURCE_IDS: KnowledgeSourceId[] = [
-  "chat",
-  "call",
-  "transcript",
-  "whisper",
-  "report",
-  "document",
-];
+const SOURCE_IDS: MemorySourceType[] = ["chat", "call", "whisper", "document"];
 
 export interface MemoryFiltersProps {
   query: string;
   status: MemoryStatusFilter;
-  sources: KnowledgeSourceId[];
+  sources: MemorySourceType[];
   statusCounts: Record<MemoryStatusFilter, number>;
   onQueryChange: (value: string) => void;
   onStatusChange: (value: MemoryStatusFilter) => void;
-  onSourcesChange: (value: KnowledgeSourceId[]) => void;
+  onSourcesChange: (value: MemorySourceType[]) => void;
 }
 
 export function MemoryFilters({
@@ -65,7 +50,7 @@ export function MemoryFilters({
   onStatusChange,
   onSourcesChange,
 }: MemoryFiltersProps) {
-  const toggleSource = (id: KnowledgeSourceId) =>
+  const toggleSource = (id: MemorySourceType) =>
     onSourcesChange(
       sources.includes(id)
         ? sources.filter((entry) => entry !== id)

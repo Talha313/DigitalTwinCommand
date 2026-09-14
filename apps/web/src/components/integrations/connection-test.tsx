@@ -5,34 +5,49 @@ import { CheckCircle2, Loader2, Plug, TriangleAlert } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import type { Integration } from "@/lib/mock-data/integrations";
+import { ApiError } from "@/lib/api-client";
+import {
+  testConnection,
+  type ConnectionTestResult,
+  type IntegrationRead,
+} from "@/lib/integrations";
 
 type TestState = "idle" | "testing" | "ok" | "fail";
 
 export interface ConnectionTestProps {
-  integration: Integration;
+  integration: IntegrationRead;
+  /** Fired with the (possibly changed) status after a real test runs. */
+  onTested?: (result: ConnectionTestResult) => void;
 }
 
-export function ConnectionTest({ integration }: ConnectionTestProps) {
+export function ConnectionTest({ integration, onTested }: ConnectionTestProps) {
   const [state, setState] = React.useState<TestState>("idle");
-  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [detail, setDetail] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     setState("idle");
+    setDetail(null);
+    setError(null);
   }, [integration.id]);
 
-  React.useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    },
-    [],
-  );
-
-  const run = () => {
+  const run = async () => {
     setState("testing");
-    timerRef.current = setTimeout(() => {
-      setState(integration.status === "connected" ? "ok" : "fail");
-    }, 1100);
+    setError(null);
+    try {
+      const result = await testConnection(integration.id);
+      setDetail(result.detail);
+      setState(result.ok ? "ok" : "fail");
+      onTested?.(result);
+    } catch (err) {
+      setState("fail");
+      setDetail(null);
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Could not run the connection test.",
+      );
+    }
   };
 
   return (
@@ -41,7 +56,7 @@ export function ConnectionTest({ integration }: ConnectionTestProps) {
         <div className="min-w-0">
           <p className="text-sm font-medium text-foreground">Connection test</p>
           <p className="text-xs text-muted-foreground">
-            Simulated — no request is sent to {integration.name}.
+            Sends a real request to {integration.name}.
           </p>
         </div>
         <Button
@@ -63,20 +78,18 @@ export function ConnectionTest({ integration }: ConnectionTestProps) {
       {state === "ok" ? (
         <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-emerald-300">
           <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-          Reached {integration.name} · 142&nbsp;ms (simulated)
+          {detail ?? `Reached ${integration.name}.`}
         </p>
       ) : null}
       {state === "fail" ? (
         <p
           className={cn(
             "mt-2 flex items-center gap-1.5 text-xs font-medium",
-            integration.status === "not_configured"
-              ? "text-muted-foreground"
-              : "text-amber-300",
+            error ? "text-destructive" : "text-amber-300",
           )}
         >
           <TriangleAlert className="h-3.5 w-3.5" aria-hidden />
-          {integration.statusDetail} Save credentials first.
+          {error ?? detail ?? "Connection failed."}
         </p>
       ) : null}
     </div>

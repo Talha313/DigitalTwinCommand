@@ -110,36 +110,10 @@ export interface Role {
 
 /* ---------------------------------------------------------------------------
  * Chat
+ * Real chat types now live in `@/lib/chat` (backend-backed). Only
+ * `suggestedPrompts` in `mock-data/chat.ts` remains — static canned example
+ * prompts for the empty state, not fake backend data.
  * ------------------------------------------------------------------------- */
-
-export type ChatAuthor = "user" | "twin";
-
-export type ToolInvocationStatus = "running" | "completed" | "blocked";
-
-export interface ToolInvocation {
-  id: string;
-  toolId: string;
-  label: string;
-  status: ToolInvocationStatus;
-  detail?: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  author: ChatAuthor;
-  content: string;
-  timestamp: string;
-  /** For twin messages: the role that produced the reply. */
-  roleId?: string;
-  tools?: ToolInvocation[];
-}
-
-export interface ChatConversation {
-  id: string;
-  title: string;
-  roleIds: string[];
-  messages: ChatMessage[];
-}
 
 /* ---------------------------------------------------------------------------
  * Live call

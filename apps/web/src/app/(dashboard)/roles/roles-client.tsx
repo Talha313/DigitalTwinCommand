@@ -7,30 +7,20 @@ import { RiskBadge } from "@/components/roles/risk-badge";
 import { RoleCard } from "@/components/roles/role-card";
 import { RoleDetails } from "@/components/roles/role-details";
 import { RoleSelector } from "@/components/roles/role-selector";
-import { roles } from "@/lib/mock-data/roles";
-import type { RiskLevel } from "@/lib/mock-data/types";
-
-const RISK_ORDER: Record<RiskLevel, number> = { low: 0, medium: 1, high: 2 };
+import { useRolesContext, combinedRisk } from "@/lib/role-context";
 
 function uniqueCount(values: string[]): number {
   return new Set(values).size;
 }
 
 export function RolesClient() {
+  const { roles, loading } = useRolesContext();
   const [activeId, setActiveId] = React.useState<string | null>(null);
-  const [selected, setSelected] = React.useState<string[]>([
-    "financial",
-    "operator",
-  ]);
+  const [selected, setSelected] = React.useState<string[]>([]);
 
   const activeRole = roles.find((role) => role.id === activeId) ?? null;
   const selectedRoles = roles.filter((role) => selected.includes(role.id));
-
-  const combinedRisk = selectedRoles.reduce<RiskLevel>(
-    (acc, role) =>
-      RISK_ORDER[role.riskLevel] > RISK_ORDER[acc] ? role.riskLevel : acc,
-    "low",
-  );
+  const risk = combinedRisk(roles, selected);
 
   return (
     <>
@@ -51,6 +41,7 @@ export function RolesClient() {
           <RoleSelector
             value={selected}
             onChange={setSelected}
+            roles={roles}
             legend="Active roles"
             description="Select the roles this Twin session should operate under."
           />
@@ -70,7 +61,7 @@ export function RolesClient() {
                 <dt className="text-muted-foreground">Combined risk</dt>
                 <dd>
                   {selectedRoles.length > 0 ? (
-                    <RiskBadge level={combinedRisk} />
+                    <RiskBadge level={risk} />
                   ) : (
                     <span className="text-muted-foreground">&mdash;</span>
                   )}
@@ -81,7 +72,9 @@ export function RolesClient() {
                 <dd className="font-medium text-foreground">
                   {uniqueCount(
                     selectedRoles.flatMap((role) =>
-                      role.tools.map((tool) => tool.id),
+                      role.tools
+                        .filter((access) => access.enabled)
+                        .map((access) => access.tool.id),
                     ),
                   )}
                 </dd>
@@ -101,16 +94,20 @@ export function RolesClient() {
         </div>
       </DashboardCard>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {roles.map((role) => (
-          <RoleCard
-            key={role.id}
-            role={role}
-            selected={selected.includes(role.id)}
-            onViewDetails={() => setActiveId(role.id)}
-          />
-        ))}
-      </div>
+      {loading && roles.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Loading roles…</p>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {roles.map((role) => (
+            <RoleCard
+              key={role.id}
+              role={role}
+              selected={selected.includes(role.id)}
+              onViewDetails={() => setActiveId(role.id)}
+            />
+          ))}
+        </div>
+      )}
 
       <RoleDetails
         role={activeRole}

@@ -22,6 +22,8 @@ class OutboundCallRequest(BaseModel):
 
 
 class CallRead(ORMModel):
+    held: bool = False
+    muted: bool = False
     id: str
     user_id: str | None = None
     direction: CallDirection

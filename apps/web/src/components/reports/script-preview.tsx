@@ -1,21 +1,21 @@
 "use client";
 
 import * as React from "react";
-import { Clock, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import type { ReportScript } from "@/lib/mock-data/reports";
 
 type Tab = "brief" | "script";
 
 export interface ScriptPreviewProps {
-  script?: ReportScript;
+  script: string | null;
+  briefJson: Record<string, unknown> | null;
 }
 
-export function ScriptPreview({ script }: ScriptPreviewProps) {
+export function ScriptPreview({ script, briefJson }: ScriptPreviewProps) {
   const [tab, setTab] = React.useState<Tab>("script");
 
-  if (!script) {
+  if (!script && !briefJson) {
     return (
       <p className="rounded-lg border border-dashed border-border/60 bg-background/40 p-4 text-center text-sm text-muted-foreground">
         The script has not been generated yet.
@@ -23,7 +23,12 @@ export function ScriptPreview({ script }: ScriptPreviewProps) {
     );
   }
 
-  const body = tab === "brief" ? script.brief : script.script;
+  const body =
+    tab === "brief"
+      ? briefJson
+        ? JSON.stringify(briefJson, null, 2)
+        : "No research brief yet."
+      : (script ?? "No script yet.");
 
   return (
     <div className="space-y-3">
@@ -51,19 +56,21 @@ export function ScriptPreview({ script }: ScriptPreviewProps) {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
+        {tab === "script" && script ? (
+          <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
             <FileText className="h-3 w-3" aria-hidden />
-            {script.wordCount} words
+            {script.split(/\s+/).filter(Boolean).length} words
           </span>
-          <span className="inline-flex items-center gap-1">
-            <Clock className="h-3 w-3" aria-hidden />~{script.estimatedMinutes} min
-          </span>
-        </div>
+        ) : null}
       </div>
 
       <div className="max-h-80 overflow-y-auto rounded-lg border border-border/50 bg-background/40 p-4">
-        <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">
+        <p
+          className={cn(
+            "whitespace-pre-line text-sm leading-relaxed text-foreground",
+            tab === "brief" && "font-mono text-xs",
+          )}
+        >
           {body}
         </p>
       </div>

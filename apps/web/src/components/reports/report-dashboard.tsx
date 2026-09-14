@@ -3,33 +3,22 @@
 import * as React from "react";
 import { Sparkles } from "lucide-react";
 
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { PageContainer } from "@/components/layout/page-container";
+import { ApiError } from "@/lib/api-client";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import {
-  draftReport,
-  reports as baseReports,
-  reportWithStatus,
-  type ReportEntry,
-} from "@/lib/mock-data/reports";
+  approveReport,
+  generateReport,
+  listReports,
+  type ReportListItem,
+} from "@/lib/reports";
 
-import { AssetList } from "./asset-list";
-import { PipelineProgress } from "./pipeline-progress";
 import { ReportCard } from "./report-card";
 import {
   matchesBucket,
   ReportFilters,
   type ReportFilterBucket,
 } from "./report-filters";
-import { ReportStatus } from "./report-status";
-import { ScriptPreview } from "./script-preview";
-import { VideoPreview } from "./video-preview";
 
 const BUCKETS: ReportFilterBucket[] = [
   "all",
@@ -39,114 +28,63 @@ const BUCKETS: ReportFilterBucket[] = [
   "failed",
 ];
 
-type DetailTab = "pipeline" | "script" | "video" | "assets";
+export function ReportDashboard() {
+  const [list, setList] = React.useState<ReportListItem[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [filter, setFilter] = React.useState<ReportFilterBucket>("all");
+  const [generating, setGenerating] = React.useState(false);
 
-function ReportDetailPanel({
-  report,
-  onApprove,
-}: {
-  report: ReportEntry;
-  onApprove: () => void;
-}) {
-  const [tab, setTab] = React.useState<DetailTab>("pipeline");
+  const refresh = React.useCallback(async () => {
+    try {
+      const data = await listReports();
+      setList(data);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to load reports.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   React.useEffect(() => {
-    setTab("pipeline");
-  }, [report.id]);
-
-  const tabs: { id: DetailTab; label: string }[] = [
-    { id: "pipeline", label: "Pipeline" },
-    { id: "script", label: "Script" },
-    { id: "video", label: "Video" },
-    { id: "assets", label: `Assets (${report.assets.length})` },
-  ];
-
-  return (
-    <>
-      <SheetHeader className="border-b border-border/60 px-5 py-4">
-        <div className="flex items-start gap-3">
-          <div className="min-w-0">
-            <SheetTitle>{report.title}</SheetTitle>
-            <p className="text-xs text-muted-foreground">
-              {report.dateLabel} · {report.createdAtLabel} · {report.model}
-            </p>
-          </div>
-          <ReportStatus status={report.status} className="ml-auto shrink-0" />
-        </div>
-        {report.status === "AWAITING_APPROVAL" ? (
-          <Button size="sm" className="mt-2 w-fit" onClick={onApprove}>
-            Approve script
-          </Button>
-        ) : null}
-        <div
-          role="tablist"
-          aria-label="Report sections"
-          className="mt-3 flex flex-wrap gap-1"
-        >
-          {tabs.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              role="tab"
-              aria-selected={tab === entry.id}
-              onClick={() => setTab(entry.id)}
-              className={cn(
-                "rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
-                tab === entry.id
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {entry.label}
-            </button>
-          ))}
-        </div>
-      </SheetHeader>
-
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
-        {tab === "pipeline" ? <PipelineProgress report={report} /> : null}
-        {tab === "script" ? <ScriptPreview script={report.script} /> : null}
-        {tab === "video" ? <VideoPreview assets={report.assets} /> : null}
-        {tab === "assets" ? <AssetList assets={report.assets} /> : null}
-      </div>
-    </>
-  );
-}
-
-export function ReportDashboard() {
-  const [list, setList] = React.useState<ReportEntry[]>(baseReports);
-  const [filter, setFilter] = React.useState<ReportFilterBucket>("all");
-  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+    void refresh();
+  }, [refresh]);
 
   const counts = BUCKETS.reduce(
     (acc, bucket) => {
-      acc[bucket] = list.filter((report) =>
-        matchesBucket(report.status, bucket),
-      ).length;
+      acc[bucket] = list.filter((report) => matchesBucket(report.status, bucket)).length;
       return acc;
     },
     {} as Record<ReportFilterBucket, number>,
   );
 
-  const visible = list.filter((report) =>
-    matchesBucket(report.status, filter),
-  );
-  const selected = list.find((report) => report.id === selectedId) ?? null;
+  const visible = list.filter((report) => matchesBucket(report.status, filter));
 
-  const approve = (id: string) => {
-    setList((current) =>
-      current.map((report) =>
-        report.id === id && report.status === "AWAITING_APPROVAL"
-          ? reportWithStatus(report, "GENERATING_AUDIO")
-          : report,
-      ),
-    );
+  const approve = async (id: string) => {
+    try {
+      await approveReport(id);
+      await refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to approve report.");
+    }
   };
 
-  const generate = () => {
-    const draft = draftReport();
-    setList((current) => [draft, ...current]);
-    setFilter("all");
+  const generate = async () => {
+    setGenerating(true);
+    setError(null);
+    try {
+      await generateReport();
+      setFilter("all");
+      await refresh();
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : "Failed to start report generation.",
+      );
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
@@ -161,15 +99,28 @@ export function ReportDashboard() {
             processing to storage.
           </p>
         </div>
-        <Button size="sm" onClick={generate} className="shrink-0 gap-2">
+        <Button
+          size="sm"
+          onClick={generate}
+          disabled={generating}
+          className="shrink-0 gap-2"
+        >
           <Sparkles className="h-4 w-4" aria-hidden />
-          Generate report
+          {generating ? "Starting…" : "Generate report"}
         </Button>
       </div>
 
+      {error ? (
+        <p className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
+
       <ReportFilters value={filter} onChange={setFilter} counts={counts} />
 
-      {visible.length === 0 ? (
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading reports…</p>
+      ) : visible.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border/60 bg-card/40 p-10 text-center">
           <p className="text-sm text-muted-foreground">
             No reports match this filter.
@@ -181,32 +132,11 @@ export function ReportDashboard() {
             <ReportCard
               key={report.id}
               report={report}
-              onReview={() => setSelectedId(report.id)}
               onApprove={() => approve(report.id)}
             />
           ))}
         </div>
       )}
-
-      <Sheet
-        open={selected !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelectedId(null);
-        }}
-      >
-        <SheetContent
-          side="right"
-          className="w-full max-w-none gap-0 p-0 sm:max-w-2xl"
-          aria-describedby={undefined}
-        >
-          {selected ? (
-            <ReportDetailPanel
-              report={selected}
-              onApprove={() => approve(selected.id)}
-            />
-          ) : null}
-        </SheetContent>
-      </Sheet>
     </PageContainer>
   );
 }

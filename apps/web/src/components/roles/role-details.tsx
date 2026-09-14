@@ -16,7 +16,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import type { Role, RiskLevel } from "@/lib/mock-data/types";
+import type { RiskLevel, RoleRead } from "@/lib/roles";
 
 import { PermissionList } from "./permission-list";
 import { RiskBadge } from "./risk-badge";
@@ -51,7 +51,7 @@ function Section({
 }
 
 export interface RoleDetailsProps {
-  role: Role | null;
+  role: RoleRead | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -76,12 +76,9 @@ export function RoleDetails({ role, open, onOpenChange }: RoleDetailsProps) {
                 </span>
                 <div className="min-w-0">
                   <SheetTitle>{role.name}</SheetTitle>
-                  <p className="text-xs text-muted-foreground">
-                    {role.updatedLabel}
-                  </p>
                 </div>
                 <RiskBadge
-                  level={role.riskLevel}
+                  level={role.risk_level}
                   className="ml-auto shrink-0"
                 />
               </div>
@@ -89,41 +86,47 @@ export function RoleDetails({ role, open, onOpenChange }: RoleDetailsProps) {
 
             <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
               <Section icon={Sparkles} title="Personality">
-                <p className="text-sm text-foreground">
-                  {role.personality.summary}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {role.personality.traits.map((trait) => (
-                    <span
-                      key={trait}
-                      className="rounded-md border border-border/60 bg-background/40 px-2 py-0.5 text-xs text-muted-foreground"
-                    >
-                      {trait}
+                {role.personality?.summary ? (
+                  <p className="text-sm text-foreground">
+                    {role.personality.summary}
+                  </p>
+                ) : null}
+                {role.personality?.traits && role.personality.traits.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {role.personality.traits.map((trait) => (
+                      <span
+                        key={trait}
+                        className="rounded-md border border-border/60 bg-background/40 px-2 py-0.5 text-xs text-muted-foreground"
+                      >
+                        {trait}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+                {role.tone ? (
+                  <div className="mt-3 flex gap-2 text-sm">
+                    <span className="w-16 shrink-0 text-muted-foreground">
+                      Tone
                     </span>
-                  ))}
-                </div>
-                <div className="mt-3 flex gap-2 text-sm">
-                  <span className="w-16 shrink-0 text-muted-foreground">
-                    Tone
-                  </span>
-                  <span className="text-foreground">
-                    {role.personality.tone}
-                  </span>
-                </div>
-                <div className="mt-3 rounded-lg border border-border/50 bg-background/40 p-3">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    System prompt preview
-                  </p>
-                  <p className="mt-1.5 whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
-                    {role.personality.systemPromptPreview}
-                  </p>
-                </div>
+                    <span className="text-foreground">{role.tone}</span>
+                  </div>
+                ) : null}
+                {role.personality?.systemPromptPreview ? (
+                  <div className="mt-3 rounded-lg border border-border/50 bg-background/40 p-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      System prompt preview
+                    </p>
+                    <p className="mt-1.5 whitespace-pre-line text-xs leading-relaxed text-muted-foreground">
+                      {role.personality.systemPromptPreview}
+                    </p>
+                  </div>
+                ) : null}
               </Section>
 
               <Section icon={ShieldCheck} title="Risk level">
-                <RiskBadge level={role.riskLevel} />
+                <RiskBadge level={role.risk_level} />
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {RISK_NOTE[role.riskLevel]}
+                  {RISK_NOTE[role.risk_level]}
                 </p>
               </Section>
 

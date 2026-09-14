@@ -5,14 +5,21 @@ import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusDot } from "@/components/ui/status-dot";
 import { RoleBadge } from "@/components/dashboard/role-badge";
-import { rolesByIds } from "@/lib/role-context";
+import { useRolesByIds } from "@/lib/role-context";
 import { formatDuration } from "@/lib/format";
-import type { CallHistoryEntry, CallStatus } from "@/lib/mock-data/types";
+import {
+  callTimestamp,
+  counterpartyNumber,
+  formatCallTimestamp,
+  toUiStatus,
+  type UiCallStatus,
+} from "@/lib/call-history";
+import { toUiDirection, type CallRead } from "@/lib/calls";
 
 import { OutcomeBadge } from "./outcome-badge";
 
 const STATUS_TONE: Record<
-  CallStatus,
+  UiCallStatus,
   "positive" | "warning" | "critical" | "neutral"
 > = {
   completed: "positive",
@@ -24,8 +31,80 @@ const STATUS_TONE: Record<
 const MAX_ROLE_CHIPS = 2;
 
 export interface CallHistoryTableProps {
-  calls: CallHistoryEntry[];
+  calls: CallRead[];
   onOpen: (id: string) => void;
+}
+
+function CallRow({
+  call,
+  onOpen,
+}: {
+  call: CallRead;
+  onOpen: (id: string) => void;
+}) {
+  const roles = useRolesByIds(call.role_ids);
+  const shown = roles.slice(0, MAX_ROLE_CHIPS);
+  const extra = roles.length - shown.length;
+  const direction = toUiDirection(call.direction);
+  const DirectionIcon = direction === "inbound" ? ArrowDownLeft : ArrowUpRight;
+
+  return (
+    <tr
+      onClick={() => onOpen(call.id)}
+      className="cursor-pointer transition-colors hover:bg-muted/30"
+    >
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <StatusDot tone={STATUS_TONE[toUiStatus(call.status)]} />
+          <p className="truncate font-mono text-[13px] text-foreground">
+            {counterpartyNumber(call)}
+          </p>
+        </div>
+      </td>
+      <td className="px-4 py-3 text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5">
+          <DirectionIcon className="h-3.5 w-3.5" aria-hidden />
+          {direction === "inbound" ? "Inbound" : "Outbound"}
+        </span>
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex flex-wrap gap-1">
+          {shown.map((role) => (
+            <RoleBadge key={role.id} name={role.name} />
+          ))}
+          {extra > 0 ? (
+            <span className="rounded-md border border-border/60 bg-background/40 px-1.5 py-0.5 text-[11px] text-muted-foreground">
+              +{extra}
+            </span>
+          ) : null}
+          {roles.length === 0 ? (
+            <span className="text-xs text-muted-foreground">—</span>
+          ) : null}
+        </div>
+      </td>
+      <td className="px-4 py-3 font-mono tabular-nums text-muted-foreground">
+        {formatDuration(call.duration_seconds ?? 0)}
+      </td>
+      <td className="px-4 py-3">
+        <OutcomeBadge outcome={call.outcome} />
+      </td>
+      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+        {formatCallTimestamp(callTimestamp(call))}
+      </td>
+      <td className="px-4 py-3 text-right">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen(call.id);
+          }}
+        >
+          Review
+        </Button>
+      </td>
+    </tr>
+  );
 }
 
 export function CallHistoryTable({ calls, onOpen }: CallHistoryTableProps) {
@@ -46,79 +125,9 @@ export function CallHistoryTable({ calls, onOpen }: CallHistoryTableProps) {
           </tr>
         </thead>
         <tbody className="divide-y divide-border/50">
-          {calls.map((call) => {
-            const roles = rolesByIds(call.roleIds);
-            const shown = roles.slice(0, MAX_ROLE_CHIPS);
-            const extra = roles.length - shown.length;
-            const DirectionIcon =
-              call.direction === "inbound" ? ArrowDownLeft : ArrowUpRight;
-
-            return (
-              <tr
-                key={call.id}
-                onClick={() => onOpen(call.id)}
-                className="cursor-pointer transition-colors hover:bg-muted/30"
-              >
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <StatusDot tone={STATUS_TONE[call.status]} />
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-foreground">
-                        {call.caller}
-                      </p>
-                      <p className="truncate font-mono text-[11px] text-muted-foreground">
-                        {call.direction === "inbound"
-                          ? call.fromNumber
-                          : call.toNumber}
-                      </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  <span className="inline-flex items-center gap-1.5">
-                    <DirectionIcon className="h-3.5 w-3.5" aria-hidden />
-                    {call.direction === "inbound" ? "Inbound" : "Outbound"}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap gap-1">
-                    {shown.map((role) => (
-                      <RoleBadge key={role.id} name={role.name} />
-                    ))}
-                    {extra > 0 ? (
-                      <span className="rounded-md border border-border/60 bg-background/40 px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                        +{extra}
-                      </span>
-                    ) : null}
-                    {roles.length === 0 ? (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    ) : null}
-                  </div>
-                </td>
-                <td className="px-4 py-3 font-mono tabular-nums text-muted-foreground">
-                  {formatDuration(call.durationSeconds)}
-                </td>
-                <td className="px-4 py-3">
-                  <OutcomeBadge outcome={call.outcome} />
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                  {call.dateLabel}, {call.startedAtLabel}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onOpen(call.id);
-                    }}
-                  >
-                    Review
-                  </Button>
-                </td>
-              </tr>
-            );
-          })}
+          {calls.map((call) => (
+            <CallRow key={call.id} call={call} onOpen={onOpen} />
+          ))}
         </tbody>
       </table>
     </div>

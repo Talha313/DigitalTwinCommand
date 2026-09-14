@@ -9,6 +9,7 @@ from app.db.models.grade import Grade
 from app.db.models.integration import Integration
 from app.db.models.memory import Memory
 from app.db.models.message import Message
+from app.db.models.notification import Notification
 from app.db.models.push import PushSubscription
 from app.db.models.report import Report, ReportJob
 from app.db.models.role import (
@@ -32,6 +33,7 @@ __all__ = [
     "Integration",
     "Memory",
     "Message",
+    "Notification",
     "PasswordResetToken",
     "Permission",
     "PushSubscription",

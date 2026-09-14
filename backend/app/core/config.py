@@ -27,9 +27,14 @@ class Settings(BaseSettings):
     bootstrap_admin_email: str = "admin@example.com"
     bootstrap_admin_password: str = ""  # if set, an admin user is created on startup
 
-    # --- LLM (Anthropic direct — used for /chat, report research, grading) ---
-    # The live *phone* agent's LLM is Claude hosted natively by ElevenLabs and
-    # is configured in the ElevenLabs dashboard, not here.
+    # --- xAI Grok — the AI engine for /chat, report research + script, and
+    # grading. The live *phone* agent's LLM is Claude hosted natively by
+    # ElevenLabs and is configured in the ElevenLabs dashboard, not here. ---
+    xai_api_key: str = ""
+    xai_model: str = "grok-4.6"
+
+    # --- Anthropic (kept but unused by default — ANTHROPIC_API_KEY is not
+    # set; nothing in this codebase calls it while that's the case) ---
     anthropic_api_key: str = ""
     anthropic_chat_model: str = "claude-sonnet-5"
     anthropic_report_model: str = "claude-opus-5"
@@ -53,7 +58,7 @@ class Settings(BaseSettings):
     lipsync_provider: str = "heygen"  # heygen | did | elevenlabs
     lipsync_api_key: str = ""
     heygen_avatar_id: str = ""
-    did_source_url: str = ""  # public URL of Howie's photo for D-ID
+    did_source_url: str = ""  # public URL of Howie's photo — used by D-ID and ElevenLabs
 
     # --- Storage --------------------------------------------------------
     # Leave S3_BUCKET empty to store on local disk under STORAGE_DIR, served
@@ -77,6 +82,12 @@ class Settings(BaseSettings):
     report_cron_minute: int = 30
     report_approval_required: bool = True
     ffmpeg_bin: str = "ffmpeg"
+
+    # --- Retention -----------------------------------------------------------
+    # Raw audio/video only — call recordings (Twilio) and report audio/video
+    # (our storage). Transcripts, scripts, and briefs are kept indefinitely;
+    # per spec §1 they're the training archive, not "raw audio."
+    retention_days: int = 30
 
     @property
     def cors_origin_list(self) -> list[str]:

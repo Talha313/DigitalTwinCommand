@@ -10,13 +10,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { roles as allRoles } from "@/lib/mock-data/roles";
-import type { CallDirection, CallStatus } from "@/lib/mock-data/types";
+import { useRolesContext } from "@/lib/role-context";
+import { shortName } from "@/lib/roles";
+import type { CallDirection } from "@/lib/mock-data/types";
+import type { UiCallStatus } from "@/lib/call-history";
 
 export type DirectionFilter = "all" | CallDirection;
 
-const STATUS_OPTIONS: { id: CallStatus; label: string }[] = [
+const STATUS_OPTIONS: { id: UiCallStatus; label: string }[] = [
   { id: "completed", label: "Completed" },
+  { id: "in-progress", label: "In progress" },
   { id: "missed", label: "Missed" },
   { id: "failed", label: "Failed" },
 ];
@@ -28,10 +31,10 @@ const DIRECTION_OPTIONS: { id: DirectionFilter; label: string }[] = [
 ];
 
 export interface CallFiltersProps {
-  status: CallStatus[];
+  status: UiCallStatus[];
   roleIds: string[];
   direction: DirectionFilter;
-  onStatusChange: (status: CallStatus[]) => void;
+  onStatusChange: (status: UiCallStatus[]) => void;
   onRoleIdsChange: (roleIds: string[]) => void;
   onDirectionChange: (direction: DirectionFilter) => void;
   onClear: () => void;
@@ -79,10 +82,11 @@ export function CallFilters({
   onDirectionChange,
   onClear,
 }: CallFiltersProps) {
+  const { roles: allRoles } = useRolesContext();
   const activeCount =
     status.length + roleIds.length + (direction !== "all" ? 1 : 0);
 
-  const toggleStatus = (value: CallStatus) =>
+  const toggleStatus = (value: UiCallStatus) =>
     onStatusChange(
       status.includes(value)
         ? status.filter((s) => s !== value)
@@ -194,13 +198,16 @@ export function CallFilters({
               onRemove={() => toggleStatus(value)}
             />
           ))}
-          {roleIds.map((value) => (
-            <FilterChip
-              key={value}
-              label={allRoles.find((r) => r.id === value)?.shortName ?? value}
-              onRemove={() => toggleRole(value)}
-            />
-          ))}
+          {roleIds.map((value) => {
+            const role = allRoles.find((r) => r.id === value);
+            return (
+              <FilterChip
+                key={value}
+                label={role ? shortName(role.name) : value}
+                onRemove={() => toggleRole(value)}
+              />
+            );
+          })}
           <button
             type="button"
             onClick={onClear}

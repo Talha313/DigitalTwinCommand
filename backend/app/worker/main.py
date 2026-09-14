@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from arq import cron
 
@@ -11,6 +12,7 @@ from app.worker.queue import redis_settings
 from app.worker.tasks import (
     generate_report,
     package_report,
+    purge_old_media,
     render_report,
     run_daily_report,
     summarize_call,
@@ -35,12 +37,17 @@ async def _shutdown(ctx: dict[str, Any]) -> None:
 
 class WorkerSettings:
     redis_settings = redis_settings()
+    # arq computes cron next-run times against this tz (Worker.__init__'s
+    # `timezone` param — defaults to the host's local tz otherwise, which
+    # would silently NOT be America/New_York on most deployment hosts).
+    timezone = ZoneInfo(settings.report_tz)
     functions = [
         generate_report,
         render_report,
         package_report,
         summarize_call,
         run_daily_report,
+        purge_old_media,
     ]
     cron_jobs = [
         cron(
@@ -49,7 +56,9 @@ class WorkerSettings:
             minute=settings.report_cron_minute,
             timeout=3600,
             unique=True,
-        )
+        ),
+        # Ahead of the daily report (03:00 vs. 05:30), same tz, low-traffic hour.
+        cron(purge_old_media, hour=3, minute=0, timeout=1800, unique=True),
     ]
     on_startup = _startup
     on_shutdown = _shutdown

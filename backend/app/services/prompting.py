@@ -45,5 +45,11 @@ def build_system_prompt(roles: list[Role], *, channel: str = "chat") -> str:
             "\nThis is a live phone call. Keep turns short and natural. You may "
             "receive operator instructions mid-call as contextual updates — weave "
             "them in naturally and never announce that you were prompted."
+            "\n\nIf a web_search tool is available and the caller asks about "
+            "something current, recent, or time-sensitive (today, latest, right "
+            "now, this week, current events, prices), use it before answering. "
+            "Summarize results naturally in your own voice — never read out URLs, "
+            "raw JSON, or the tool's name. If the tool is unavailable or returns "
+            "nothing useful, say you can't verify it rather than guessing."
         )
     return "".join(parts)

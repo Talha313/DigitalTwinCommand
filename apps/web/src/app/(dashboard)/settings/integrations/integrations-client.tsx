@@ -7,11 +7,41 @@ import { ArrowLeft } from "lucide-react";
 import { PageContainer } from "@/components/layout/page-container";
 import { IntegrationList } from "@/components/integrations/integration-list";
 import { IntegrationModal } from "@/components/integrations/integration-modal";
-import { getIntegration } from "@/lib/mock-data/integrations";
+import { ApiError } from "@/lib/api-client";
+import { listIntegrations, type IntegrationRead } from "@/lib/integrations";
 
 export function IntegrationsClient() {
+  const [integrations, setIntegrations] = React.useState<IntegrationRead[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
-  const selected = selectedId ? (getIntegration(selectedId) ?? null) : null;
+
+  React.useEffect(() => {
+    let cancelled = false;
+    listIntegrations()
+      .then((data) => {
+        if (!cancelled) setIntegrations(data);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(
+            err instanceof ApiError ? err.message : "Failed to load integrations.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selected = integrations.find((i) => i.id === selectedId) ?? null;
+
+  const handleUpdated = (updated: IntegrationRead) => {
+    setIntegrations((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+  };
 
   return (
     <PageContainer>
@@ -32,7 +62,15 @@ export function IntegrationsClient() {
         </div>
       </div>
 
-      <IntegrationList onConfigure={setSelectedId} />
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading integrations…</p>
+      ) : error ? (
+        <p className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </p>
+      ) : (
+        <IntegrationList integrations={integrations} onConfigure={setSelectedId} />
+      )}
 
       <IntegrationModal
         integration={selected}
@@ -40,6 +78,7 @@ export function IntegrationsClient() {
         onOpenChange={(open) => {
           if (!open) setSelectedId(null);
         }}
+        onUpdated={handleUpdated}
       />
     </PageContainer>
   );

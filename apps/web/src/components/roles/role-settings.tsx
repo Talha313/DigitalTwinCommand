@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { Switch } from "@/components/ui/switch";
-import type { Role } from "@/lib/mock-data/types";
+import type { RoleRead } from "@/lib/roles";
 
 import { RiskBadge } from "./risk-badge";
 
@@ -42,19 +42,19 @@ function SettingRow({
 }
 
 export interface RoleSettingsProps {
-  role: Role;
+  role: RoleRead;
 }
 
 export function RoleSettings({ role }: RoleSettingsProps) {
-  const [active, setActive] = React.useState(role.active);
+  const [active, setActive] = React.useState(role.is_active);
   const [requireApproval, setRequireApproval] = React.useState(
-    role.riskLevel === "high",
+    role.risk_level === "high",
   );
 
   // Re-sync when a different role is opened in the same drawer instance.
   React.useEffect(() => {
-    setActive(role.active);
-    setRequireApproval(role.riskLevel === "high");
+    setActive(role.is_active);
+    setRequireApproval(role.risk_level === "high");
   }, [role]);
 
   return (
@@ -85,13 +85,15 @@ export function RoleSettings({ role }: RoleSettingsProps) {
             Derived from the role&apos;s most sensitive capability.
           </p>
         </div>
-        <RiskBadge level={role.riskLevel} />
+        <RiskBadge level={role.risk_level} />
       </div>
 
-      <div className="rounded-lg border border-border/50 bg-background/40 p-3">
-        <p className="text-sm text-foreground">Tone</p>
-        <p className="text-xs text-muted-foreground">{role.personality.tone}</p>
-      </div>
+      {role.tone ? (
+        <div className="rounded-lg border border-border/50 bg-background/40 p-3">
+          <p className="text-sm text-foreground">Tone</p>
+          <p className="text-xs text-muted-foreground">{role.tone}</p>
+        </div>
+      ) : null}
     </div>
   );
 }

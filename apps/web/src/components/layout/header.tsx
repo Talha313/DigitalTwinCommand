@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 
 import { StatusDot } from "@/components/ui/status-dot";
+import { useHealth } from "@/hooks/use-health";
 
 import { MobileSidebar } from "./mobile-sidebar";
 import { NAV_ITEMS, isActivePath } from "./nav-items";
@@ -17,6 +18,8 @@ function useCurrentPageTitle(): string {
 
 export function Header() {
   const title = useCurrentPageTitle();
+  const { health, loading } = useHealth();
+  const online = health?.status === "ok";
 
   return (
     <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur-md sm:px-6">
@@ -36,8 +39,8 @@ export function Header() {
 
       <div className="flex items-center gap-1.5 sm:gap-2">
         <span className="hidden items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1.5 text-xs font-medium text-foreground sm:inline-flex">
-          <StatusDot tone="positive" pulse />
-          AI Online
+          <StatusDot tone={online ? "positive" : "critical"} pulse={online} />
+          {loading ? "Checking…" : online ? "AI Online" : "AI Degraded"}
         </span>
         <NotificationMenu />
         <UserMenu />

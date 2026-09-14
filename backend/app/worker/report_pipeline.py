@@ -1,6 +1,6 @@
 """The daily 10-minute market report pipeline (spec §8).
 
-research (Claude + web_search) -> script -> [approve] -> voice (ElevenLabs PVC)
+research (Grok + web_search) -> script -> [approve] -> voice (ElevenLabs PVC)
 -> avatar (HeyGen/D-ID) -> package (ffmpeg) -> upload (S3) -> READY
 """
 
@@ -17,10 +17,10 @@ from app.db.models.enums import ReportJobStatus, ReportStage, ReportStatus
 from app.db.models.report import Report, ReportJob
 from app.db.session import session_scope
 from app.errors import AppError
-from app.providers.anthropic_client import anthropic_client
 from app.providers.elevenlabs import elevenlabs_client
 from app.providers.lipsync import lipsync_client
 from app.providers.storage import storage
+from app.providers.xai_client import xai_client
 from app.services import media
 from app.services.base import as_uuid
 
@@ -42,6 +42,13 @@ _SCRIPT_SYSTEM = (
     "1,250-1,500 spoken words (~10 minutes). Cite dates. If a number is "
     "uncertain, say so. Output the spoken script only — no headings, no notes."
 )
+
+
+def _cost_cents(usage: dict) -> int:
+    """xAI reports the exact billed cost per request as cost_in_usd_ticks,
+    where 1 USD = 10^10 ticks — no pricing table to keep in sync."""
+    ticks = usage.get("cost_in_usd_ticks") or 0
+    return round(ticks / 1e10 * 100)
 
 
 class ReportGone(AppError):
@@ -99,14 +106,14 @@ async def _set_status(report_id: str, status: ReportStatus, *, error: str | None
 async def research_and_script(report_id: str) -> ReportStatus:
     """Stages 1-2. Ends at SCRIPT_READY (or APPROVED if approval is off)."""
     await _require_report(report_id)
+    log.info("report %s using xAI (%s) for research + script", report_id, settings.xai_model)
     # --- research ---
     await _set_status(report_id, ReportStatus.RESEARCHING)
     await _stage(report_id, ReportStage.RESEARCH, ReportJobStatus.RUNNING)
     try:
-        res = await anthropic_client.complete(
+        res = await xai_client.complete(
             system=_RESEARCH_SYSTEM,
             messages=[{"role": "user", "content": "Prepare today's market brief."}],
-            model=settings.anthropic_report_model,
             web_search=True,
             max_tokens=4000,
         )
@@ -115,19 +122,39 @@ async def research_and_script(report_id: str) -> ReportStatus:
         await _stage(report_id, ReportStage.RESEARCH, ReportJobStatus.FAILED, error=exc.message)
         await _set_status(report_id, ReportStatus.FAILED, error=exc.message)
         raise
+
+    cost_cents = _cost_cents(res.get("usage", {}))
+
+    # X/Twitter headlines — the main web_search tool above doesn't reach X.
+    # Never fails the report; if this call errors, the brief just goes out
+    # without it.
+    x_search_trace: dict | None = None
+    if xai_client.configured:
+        try:
+            x_res = await xai_client.x_search(
+                "What is being said on X/Twitter today about markets, stocks, "
+                "rates, and the economy? Summarize the most notable posts."
+            )
+            cost_cents += _cost_cents(x_res.get("usage", {}))
+            if x_res["text"]:
+                brief["social_headlines"] = x_res["text"]
+                x_search_trace = {"citations": x_res["citations"], "model": x_res.get("model")}
+        except AppError:
+            log.warning("report %s: xAI x_search enrichment failed, continuing without it", report_id)
+
     async with session_scope() as session:
         report = await session.get(Report, as_uuid(report_id))
         if report is None:
             raise ReportGone(f"Report {report_id} no longer exists.")
         report.brief_json = brief
-        report.tool_traces = {"research": res.get("tool_traces", [])}
+        report.tool_traces = {"research": res.get("tool_traces", []), "x_search": x_search_trace}
         report.model = res.get("model")
     await _stage(report_id, ReportStage.RESEARCH, ReportJobStatus.COMPLETED)
 
     # --- script ---
     await _stage(report_id, ReportStage.SCRIPT, ReportJobStatus.RUNNING)
     try:
-        script_res = await anthropic_client.complete(
+        script_res = await xai_client.complete(
             system=_SCRIPT_SYSTEM,
             messages=[
                 {
@@ -135,18 +162,22 @@ async def research_and_script(report_id: str) -> ReportStatus:
                     "content": f"Today's brief:\n{json.dumps(brief, indent=2)}",
                 }
             ],
-            model=settings.anthropic_report_model,
             max_tokens=6000,
         )
     except AppError as exc:
         await _stage(report_id, ReportStage.SCRIPT, ReportJobStatus.FAILED, error=exc.message)
         await _set_status(report_id, ReportStatus.FAILED, error=exc.message)
         raise
+    cost_cents += _cost_cents(script_res.get("usage", {}))
     async with session_scope() as session:
         report = await session.get(Report, as_uuid(report_id))
         if report is None:
             raise ReportGone(f"Report {report_id} no longer exists.")
         report.script = script_res["text"]
+        # LLM (research + x_search + script) cost only — ElevenLabs TTS and
+        # avatar-video don't return per-request cost the way xAI does, so
+        # this is a real, exact figure for the Grok side, not a full total.
+        report.cost_cents = cost_cents
     await _stage(report_id, ReportStage.SCRIPT, ReportJobStatus.COMPLETED)
 
     if settings.report_approval_required:
@@ -163,10 +194,11 @@ def _report_key(report) -> str:
 async def render(report_id: str) -> None:
     """Stages 4-7: voice -> avatar -> package -> upload.
 
-    With ``LIPSYNC_PROVIDER=elevenlabs`` there is no public avatar-video API, so
-    the pipeline produces the audio + captions and then parks the report at
-    ``AWAITING_AVATAR`` for an operator to render in ElevenCreative and upload
-    via ``POST /api/reports/{id}/avatar``. ``heygen`` / ``did`` run end-to-end.
+    ``heygen`` / ``did`` / a configured ``elevenlabs`` (ELEVENLABS_API_KEY +
+    DID_SOURCE_URL — see lipsync.py) run end-to-end automatically. Only an
+    unconfigured ``elevenlabs`` parks the report at ``AWAITING_AVATAR`` for an
+    operator to render in ElevenCreative and upload via
+    ``POST /api/reports/{id}/avatar``.
     """
     await _require_report(report_id)
     await _set_status(report_id, ReportStatus.GENERATING)
@@ -198,7 +230,7 @@ async def render(report_id: str) -> None:
 
     # --- avatar ---
     await _stage(report_id, ReportStage.AVATAR, ReportJobStatus.RUNNING)
-    if lipsync_client.provider == "elevenlabs":
+    if lipsync_client.provider == "elevenlabs" and not lipsync_client.automated:
         await _stage(
             report_id,
             ReportStage.AVATAR,
@@ -206,13 +238,18 @@ async def render(report_id: str) -> None:
             error="Awaiting manual render in ElevenCreative — audio + captions ready.",
         )
         await _set_status(report_id, ReportStatus.AWAITING_AVATAR)
-        log.info("report %s AWAITING_AVATAR (elevenlabs provider)", report_id)
+        log.info("report %s AWAITING_AVATAR (elevenlabs not configured)", report_id)
         return
 
     results: dict[str, str] = {}
-    for aspect in ("16x9", "9x16"):
-        raw_video_url = await lipsync_client.render(audio_url=audio_url, aspect=aspect)
-        results[aspect] = raw_video_url
+    try:
+        for aspect in ("16x9", "9x16"):
+            raw_video_url = await lipsync_client.render(audio_url=audio_url, aspect=aspect)
+            results[aspect] = raw_video_url
+    except AppError as exc:
+        await _stage(report_id, ReportStage.AVATAR, ReportJobStatus.FAILED, error=exc.message)
+        await _set_status(report_id, ReportStatus.FAILED, error=exc.message)
+        raise
     await _stage(report_id, ReportStage.AVATAR, ReportJobStatus.COMPLETED)
     await finalize_from_videos(report_id, results, srt_text=srt_text)
 

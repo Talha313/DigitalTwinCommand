@@ -1,53 +1,46 @@
 import { cn } from "@/lib/utils";
-import type { CallOutcome } from "@/lib/mock-data/types";
+import type { CallOutcome } from "@/lib/call-history";
 
 const OUTCOME_META: Record<CallOutcome, { label: string; className: string }> = {
-  resolved: {
-    label: "Resolved",
+  won: {
+    label: "Won",
     className: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
   },
-  follow_up_scheduled: {
-    label: "Follow-up scheduled",
-    className: "border-sky-500/25 bg-sky-500/10 text-sky-300",
-  },
-  info_provided: {
-    label: "Info provided",
-    className: "border-primary/25 bg-primary/10 text-primary",
-  },
-  voicemail: {
-    label: "Voicemail",
-    className: "border-amber-500/25 bg-amber-500/10 text-amber-300",
-  },
-  no_answer: {
-    label: "No answer",
-    className: "border-border bg-muted text-muted-foreground",
-  },
-  dropped: {
-    label: "Dropped",
+  lost: {
+    label: "Lost",
     className: "border-rose-500/25 bg-rose-500/10 text-rose-300",
   },
-  escalated: {
-    label: "Escalated",
-    className: "border-amber-500/25 bg-amber-500/10 text-amber-300",
+  follow_up: {
+    label: "Follow-up",
+    className: "border-sky-500/25 bg-sky-500/10 text-sky-300",
+  },
+  junk: {
+    label: "Junk",
+    className: "border-border bg-muted text-muted-foreground",
   },
 };
 
 export interface OutcomeBadgeProps {
-  outcome: CallOutcome;
+  /** `CallRead.outcome` — a plain string on the wire, null until an operator sets one. */
+  outcome: string | null;
   className?: string;
 }
 
 export function OutcomeBadge({ outcome, className }: OutcomeBadgeProps) {
-  const meta = OUTCOME_META[outcome];
+  const meta =
+    outcome && Object.hasOwn(OUTCOME_META, outcome)
+      ? OUTCOME_META[outcome as CallOutcome]
+      : null;
+
   return (
     <span
       className={cn(
         "inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium",
-        meta.className,
+        meta?.className ?? "border-border bg-muted text-muted-foreground",
         className,
       )}
     >
-      {meta.label}
+      {meta?.label ?? outcome ?? "No outcome"}
     </span>
   );
 }
