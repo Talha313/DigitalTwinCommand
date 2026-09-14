@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "pwa:build": "NEXT_PUBLIC_API_URL='' NEXT_DIST_DIR=.next-mobile PWA_TEST_BACKEND_URL=http://127.0.0.1:8000 next build",
+    "pwa:start": "NEXT_PUBLIC_API_URL='' NEXT_DIST_DIR=.next-mobile PWA_TEST_BACKEND_URL=http://127.0.0.1:8000 next start -p 3100"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.2.6",
