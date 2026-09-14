@@ -83,6 +83,12 @@ class Settings(BaseSettings):
     report_approval_required: bool = True
     ffmpeg_bin: str = "ffmpeg"
 
+    # --- Retention -----------------------------------------------------------
+    # Raw audio/video only — call recordings (Twilio) and report audio/video
+    # (our storage). Transcripts, scripts, and briefs are kept indefinitely;
+    # per spec §1 they're the training archive, not "raw audio."
+    retention_days: int = 30
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

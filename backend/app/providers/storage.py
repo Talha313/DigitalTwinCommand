@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlparse
 
 from app.core.config import settings
 from app.core.logging import get_logger
@@ -55,6 +56,20 @@ def local_path(key: str) -> Path:
     return target
 
 
+def key_from_url(url: str) -> str | None:
+    """Best-effort reverse of url_for() — the retention job stores URLs, not
+    keys, so it needs to recover the key to delete the right object. Returns
+    None for a URL that isn't ours (nothing to delete)."""
+    if not _use_s3():
+        prefix = f"{settings.public_base}/media/"
+        return url[len(prefix) :] if url.startswith(prefix) else None
+    if settings.s3_public_base_url:
+        prefix = f"{settings.s3_public_base_url.rstrip('/')}/"
+        return url[len(prefix) :] if url.startswith(prefix) else None
+    # Presigned URL: the key is the path, everything before the query string.
+    return urlparse(url).path.lstrip("/") or None
+
+
 class Storage:
     @property
     def backend(self) -> str:
@@ -89,6 +104,24 @@ class Storage:
 
             await asyncio.to_thread(_write)
         return await self.url_for(key)
+
+    async def delete(self, key: str) -> None:
+        if _use_s3():
+            from botocore.exceptions import BotoCoreError, ClientError
+
+            def _delete() -> None:
+                _s3().delete_object(Bucket=settings.s3_bucket, Key=key)
+
+            try:
+                await asyncio.to_thread(_delete)
+            except (BotoCoreError, ClientError) as exc:
+                raise UpstreamError(f"S3 delete failed: {exc}") from exc
+        else:
+
+            def _unlink() -> None:
+                local_path(key).unlink(missing_ok=True)
+
+            await asyncio.to_thread(_unlink)
 
     async def url_for(self, key: str, *, expires: int = 604800) -> str:
         if not _use_s3():

@@ -93,6 +93,20 @@ class TwilioClient:
     async def redirect_to_hold(self, call_sid: str, hold_url: str) -> None:
         await self.update_call(call_sid, Url=hold_url, Method="POST")
 
+    async def delete_recording(self, recording_url: str) -> None:
+        """recording_url is the Recordings resource URL (RecordingUrl from
+        Twilio's callback) — its last path segment is the RecordingSid."""
+        sid, token = self._auth()
+        recording_sid = recording_url.rstrip("/").rsplit("/", 1)[-1]
+        try:
+            resp = await shared_client().delete(
+                f"{_API}/Accounts/{sid}/Recordings/{recording_sid}.json", auth=(sid, token)
+            )
+            if resp.status_code not in (204, 404):
+                resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise UpstreamError(f"Twilio delete recording failed: {exc}") from exc
+
     async def fetch_recording(self, recording_url: str) -> tuple[bytes, str]:
         """Recording media URLs are Twilio API resources, not public files —
         they need the same account SID/auth token Basic Auth as every other
