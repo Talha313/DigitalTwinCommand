@@ -4,6 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
+import { ApiError } from "@/lib/api-client";
+import { useRolesContext } from "@/lib/role-context";
 import { RiskBadge } from "@/components/roles/risk-badge";
 import {
   getRole,
@@ -88,6 +90,9 @@ export interface RoleConfigurationProps {
 }
 
 export function RoleConfiguration({ roleId }: RoleConfigurationProps) {
+  const { refresh } = useRolesContext();
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [attempt, setAttempt] = React.useState(0);
   const [role, setRole] = React.useState<RoleRead | null>(null);
   const [permissions, setPermissions] = React.useState<PermissionRead[]>([]);
   const [tools, setTools] = React.useState<ToolRead[]>([]);
@@ -101,27 +106,43 @@ export function RoleConfiguration({ roleId }: RoleConfigurationProps) {
     setLoading(true);
     setNotFound(false);
 
-    Promise.all([getRole(roleId), listPermissions(), listTools()])
-      .then(([fetchedRole, fetchedPermissions, fetchedTools]) => {
-        if (cancelled) return;
+    setLoadError(null);
+    setRole(null);
+    setDraft(null);
+    setSaved(null);
+    const requests = [getRole(roleId), listPermissions(), listTools()] as const;
+    void Promise.allSettled(requests).then(([roleResult, permissionResult, toolResult]) => {
+      if (cancelled) return;
+      if (roleResult.status === "rejected") {
+        const error = roleResult.reason;
+        setNotFound(error instanceof ApiError && error.status === 404);
+        setLoadError(error instanceof Error ? error.message : "Could not load this role.");
+      } else {
+        const fetchedRole = roleResult.value;
         setRole(fetchedRole);
-        setPermissions(fetchedPermissions);
-        setTools(fetchedTools);
         const initial = draftFromRole(fetchedRole);
         setSaved(initial);
         setDraft(initial);
-      })
-      .catch(() => {
-        if (!cancelled) setNotFound(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+        if (permissionResult.status === "fulfilled" && toolResult.status === "fulfilled") {
+          setPermissions(permissionResult.value);
+          setTools(toolResult.value);
+        } else {
+          setPermissions([]);
+          setTools([]);
+          const error = permissionResult.status === "rejected"
+            ? permissionResult.reason
+            : toolResult.status === "rejected" ? toolResult.reason : null;
+          setLoadError("Could not load configuration options. " +
+            (error instanceof Error ? error.message : "Please try again."));
+        }
+      }
+      setLoading(false);
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [roleId]);
+  }, [roleId, attempt]);
 
   const dirty = draft !== null && saved !== null && !isEqual(draft, saved);
 
@@ -131,16 +152,14 @@ export function RoleConfiguration({ roleId }: RoleConfigurationProps) {
   ) => setDraft((current) => (current ? { ...current, [key]: value } : current));
 
   const save = async () => {
-    if (!draft) return;
+    if (!draft || loadError) return;
     const patch: RoleUpdate = {
       risk_level: draft.riskLevel,
       tone: draft.tone,
       permission_ids: draft.permissionIds,
       tool_ids: draft.toolIds,
       personality: {
-        summary: role?.personality?.summary,
-        traits: role?.personality?.traits,
-        systemPromptPreview: role?.personality?.systemPromptPreview,
+        ...role?.personality,
         responseStyle: draft.responseStyle,
         behaviorPreferences: draft.behaviorPreferences,
       },
@@ -150,6 +169,7 @@ export function RoleConfiguration({ roleId }: RoleConfigurationProps) {
     const next = draftFromRole(updated);
     setSaved(next);
     setDraft(next);
+    await refresh();
   };
 
   const discard = () => setDraft(saved);
@@ -158,6 +178,24 @@ export function RoleConfiguration({ roleId }: RoleConfigurationProps) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center text-sm text-muted-foreground">
         Loading role…
+      </div>
+    );
+  }
+
+  if (!notFound && (loadError || !role || !draft)) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+        <h2 className="text-lg font-semibold">{role?.name ?? "Role configuration"}</h2>
+        <p role="alert" className="text-sm text-muted-foreground">
+          {loadError ?? "Could not load this role."}
+        </p>
+        <button type="button" onClick={() => setAttempt((value) => value + 1)}
+          className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">
+          Retry
+        </button>
+        <Link href="/roles" className="text-xs font-medium text-primary hover:underline">
+          Back to roles
+        </Link>
       </div>
     );
   }
