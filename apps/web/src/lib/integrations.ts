@@ -157,12 +157,12 @@ const PROVIDER_CATALOG: Record<string, ProviderMeta> = {
       },
     ],
   },
-  anthropic: {
+  xai: {
     category: "AI engine",
     purpose: "AI reasoning engine",
     description:
-      "Claude powers the dashboard chat, the daily-report research + script, and grading.",
-    docsUrl: "https://docs.anthropic.com",
+      "Grok powers the dashboard chat, the daily-report research + script, and grading.",
+    docsUrl: "https://docs.x.ai",
     icon: "sparkles",
     capabilities: [
       { id: "chat", label: "Chat completions" },
@@ -229,7 +229,9 @@ const PROVIDER_CATALOG: Record<string, ProviderMeta> = {
  * backend/app/services/integrations.py), mapped to the canonical catalog
  * entry above. */
 const PROVIDER_ALIASES: Record<string, string> = {
-  claude: "anthropic",
+  grok: "xai",
+  claude: "xai",
+  anthropic: "xai",
   did: "heygen",
   lipsync: "heygen",
   aws: "s3",

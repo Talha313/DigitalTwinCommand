@@ -5,7 +5,6 @@ from typing import Any
 
 from sqlalchemy import select
 
-from app.core.config import settings
 from app.core.logging import get_logger
 from app.db.models.enums import (
     MemorySourceType,
@@ -17,7 +16,7 @@ from app.db.models.memory import Memory
 from app.db.models.report import Report
 from app.db.models.user import User
 from app.db.session import session_scope
-from app.providers.anthropic_client import anthropic_client
+from app.providers.xai_client import xai_client
 from app.services.base import as_uuid
 from app.services.notifications import create_notifications
 from app.services.push import notify_users
@@ -108,7 +107,7 @@ async def package_report(ctx: dict[str, Any], report_id: str, raw_videos: dict[s
 
 async def summarize_call(ctx: dict[str, Any], call_id: str) -> None:
     """Post-call enrichment: a one-line summary + candidate training memories."""
-    if not anthropic_client.configured:
+    if not xai_client.configured:
         return
     from app.db.models.call import Call
     from app.db.models.utterance import Utterance
@@ -133,14 +132,13 @@ async def summarize_call(ctx: dict[str, Any], call_id: str) -> None:
             return
 
     try:
-        res = await anthropic_client.complete(
+        res = await xai_client.complete(
             system=(
                 "Summarise this phone call in one sentence, then on new lines list "
                 "0-5 durable facts worth remembering about the caller or the "
                 "relationship, one per line prefixed with '- '."
             ),
             messages=[{"role": "user", "content": transcript[:12000]}],
-            model=settings.anthropic_grader_model,
             max_tokens=600,
         )
     except Exception:

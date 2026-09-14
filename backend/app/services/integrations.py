@@ -15,12 +15,12 @@ from app.models.integrations import (
     IntegrationRead,
     IntegrationUpdate,
 )
-from app.providers.anthropic_client import anthropic_client
 from app.providers.elevenlabs import elevenlabs_client
 from app.providers.lipsync import lipsync_client
 from app.providers.push import push_client
 from app.providers.storage import storage
 from app.providers.twilio_client import twilio_client
+from app.providers.xai_client import xai_client
 from app.services.base import Service
 
 log = get_logger(__name__)
@@ -56,11 +56,11 @@ async def _probe(provider: str) -> tuple[bool, str]:
             else:
                 detail += " · no ELEVENLABS_AGENT_ID"
             return True, detail
-        if p in {"anthropic", "claude"}:
+        if p in {"xai", "grok"}:
             return (
-                (True, f"Key present · {settings.anthropic_chat_model}")
-                if anthropic_client.configured
-                else (False, "ANTHROPIC_API_KEY is not set.")
+                (True, f"Key present · {settings.xai_model}")
+                if xai_client.configured
+                else (False, "XAI_API_KEY is not set.")
             )
         if p in {"heygen", "did", "lipsync"}:
             prov = lipsync_client.provider

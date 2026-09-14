@@ -34,7 +34,7 @@ _PERMISSIONS = [
 
 _TOOLS = [
     ("market_search", "internal", "Search live market data and news"),
-    ("web_search", "anthropic", "General web search"),
+    ("web_search", "xai", "General web search"),
     ("calendar", "google", "Google Calendar read/write"),
     ("crm_lookup", "internal", "Look up a caller in the CRM"),
     ("send_email", "internal", "Compose and send an email"),
@@ -80,7 +80,7 @@ _ROLES = [
 ]
 
 _INTEGRATIONS = [
-    ("Anthropic (Claude)", "anthropic", "ai_engine"),
+    ("xAI (Grok)", "xai", "ai_engine"),
     ("ElevenLabs", "elevenlabs", "voice"),
     ("Twilio", "twilio", "telephony"),
     ("HeyGen / D-ID", "lipsync", "video"),

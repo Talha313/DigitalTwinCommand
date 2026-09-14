@@ -44,10 +44,10 @@ export function SystemOverview({ className }: { className?: string }) {
         {
           id: "ai-model",
           label: "AI model",
-          value: health.integrations.anthropic ? "Ready" : "Not configured",
+          value: health.integrations.xai ? "Ready" : "Not configured",
           detail: health.chat_llm,
-          positive: health.integrations.anthropic,
-          tone: health.integrations.anthropic ? "positive" : "warning",
+          positive: health.integrations.xai,
+          tone: health.integrations.xai ? "positive" : "warning",
           icon: Bot,
         },
         {
