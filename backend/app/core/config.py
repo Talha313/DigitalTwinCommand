@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     lipsync_provider: str = "heygen"  # heygen | did | elevenlabs
     lipsync_api_key: str = ""
     heygen_avatar_id: str = ""
-    did_source_url: str = ""  # public URL of Howie's photo for D-ID
+    did_source_url: str = ""  # public URL of Howie's photo — used by D-ID and ElevenLabs
 
     # --- Storage --------------------------------------------------------
     # Leave S3_BUCKET empty to store on local disk under STORAGE_DIR, served
