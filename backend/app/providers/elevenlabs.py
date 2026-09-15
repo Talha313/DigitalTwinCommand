@@ -104,7 +104,7 @@ class ElevenLabsClient:
                         "use_speaker_boost": True,
                     },
                 },
-                timeout=httpx.Timeout(600.0, connect=10.0),
+                timeout=httpx.Timeout(180.0, connect=10.0),
             )
             resp.raise_for_status()
         except httpx.HTTPError as exc:

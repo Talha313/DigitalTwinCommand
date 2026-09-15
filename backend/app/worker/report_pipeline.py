@@ -7,6 +7,7 @@ research (Grok + web_search) -> script -> [approve] -> voice (ElevenLabs PVC)
 from __future__ import annotations
 
 import json
+import re
 from datetime import UTC, datetime
 
 from sqlalchemy import select
@@ -191,6 +192,28 @@ def _report_key(report) -> str:
     return f"reports/{report.date or report.id}"
 
 
+def _chunk_script(script: str, *, max_chars: int = 2200) -> list[str]:
+    """One TTS request for the full ~1,250-1,500 word (~9,000 char) script
+    can stall ElevenLabs for minutes and sometimes never returns at all
+    (see the ReadTimeout that used to fail render_report outright). Split on
+    sentence boundaries into request-sized chunks and synthesize each
+    separately instead — media.concat_audio stitches the results back into
+    one file."""
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", script.strip()) if s.strip()]
+    chunks: list[str] = []
+    current = ""
+    for sentence in sentences:
+        candidate = f"{current} {sentence}".strip() if current else sentence
+        if len(candidate) > max_chars and current:
+            chunks.append(current)
+            current = sentence
+        else:
+            current = candidate
+    if current:
+        chunks.append(current)
+    return chunks or [script]
+
+
 async def render(report_id: str) -> None:
     """Stages 4-7: voice -> avatar -> package -> upload.
 
@@ -214,7 +237,15 @@ async def render(report_id: str) -> None:
 
     # --- voice ---
     await _stage(report_id, ReportStage.VOICE, ReportJobStatus.RUNNING)
-    audio = await elevenlabs_client.tts(script)
+    chunks = _chunk_script(script)
+    log.info("report %s: synthesizing voice in %d chunk(s)", report_id, len(chunks))
+    try:
+        audio_parts = [await elevenlabs_client.tts(chunk) for chunk in chunks]
+    except AppError as exc:
+        await _stage(report_id, ReportStage.VOICE, ReportJobStatus.FAILED, error=exc.message)
+        await _set_status(report_id, ReportStatus.FAILED, error=exc.message)
+        raise
+    audio = await media.concat_audio(audio_parts)
     audio_url = await storage.put(f"{report_key}/audio.mp3", audio, content_type="audio/mpeg")
     await _stage(report_id, ReportStage.VOICE, ReportJobStatus.COMPLETED)
 
