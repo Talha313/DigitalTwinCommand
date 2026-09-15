@@ -43,6 +43,31 @@ async def _download(url: str, dest: Path) -> None:
                 fh.write(chunk)
 
 
+async def concat_audio(chunks: list[bytes]) -> bytes:
+    """Stitch multiple MP3 buffers (e.g. per-chunk TTS output, see
+    report_pipeline._chunk_script) into one file. Falls back to raw byte
+    concatenation when ffmpeg isn't installed — same-codec/bitrate MP3 frames
+    from a single TTS voice splice cleanly enough for narration audio."""
+    if len(chunks) == 1:
+        return chunks[0]
+    if not ffmpeg_available():
+        return b"".join(chunks)
+    with tempfile.TemporaryDirectory() as tmp:
+        d = Path(tmp)
+        list_path = d / "list.txt"
+        lines = []
+        for i, chunk in enumerate(chunks):
+            part = d / f"part{i}.mp3"
+            part.write_bytes(chunk)
+            lines.append(f"file '{part.as_posix()}'")
+        list_path.write_text("\n".join(lines))
+        out = d / "out.mp3"
+        await _run(
+            "-f", "concat", "-safe", "0", "-i", list_path.as_posix(), "-c", "copy", out.as_posix()
+        )
+        return out.read_bytes()
+
+
 def build_srt(script: str, *, total_seconds: float) -> str:
     """Naive even-split captions — good enough for a spot check; replace with a
     forced-alignment pass later."""
