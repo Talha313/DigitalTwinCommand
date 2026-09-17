@@ -67,6 +67,24 @@ async def voice(
             call.twilio_sid = call.twilio_sid or twilio_sid
             call.status = CallStatus.IN_PROGRESS
 
+    # MachineDetection=Enable (twilio_client.create_call) makes Twilio wait
+    # for AMD before fetching this webhook, so AnsweredBy is already known
+    # here on the initial answer. Only outbound calls carry it — inbound has
+    # no caller to detect, and a /voice hit for `resume` (returning from
+    # hold) is a mid-call redirect, not an answer event, so it's absent
+    # there too; both leave answered_by empty and fall through normally.
+    # Note this only catches Twilio's own machine/fax classification — it
+    # won't catch AMD *false positives* that report "human" when nothing
+    # actually picked up.
+    answered_by = (form.get("AnsweredBy") or "").lower()
+    if answered_by.startswith("machine") or answered_by == "fax":
+        log.info("call %s: AnsweredBy=%s — not a human pickup, hanging up", call_id, answered_by)
+        async with session_scope() as session:
+            call = await session.get(Call, as_uuid(call_id))
+            if call is not None:
+                call.status = CallStatus.NO_ANSWER
+        return _twiml("<Response><Hangup/></Response>")
+
     # Record every call by default. Twilio recording runs independently of
     # whatever TwiML verb is active, so starting it here (rather than via
     # <Record>, which would block <Connect><Stream>) works for both legs —
@@ -117,7 +135,12 @@ async def status_callback(request: Request, call_id: str = "") -> Response:
         async with session_scope() as session:
             call = await session.get(Call, as_uuid(call_id))
             if call is not None:
-                call.status = mapping[call_status]
+                # A machine/fax pickup (/voice's AnsweredBy check) already
+                # set NO_ANSWER and hung up itself — Twilio still reports
+                # that hangup as a normal "completed" event afterwards, so
+                # don't let it clobber the more accurate status back.
+                if not (call_status == "completed" and call.status == CallStatus.NO_ANSWER):
+                    call.status = mapping[call_status]
                 if form.get("CallDuration"):
                     call.duration_seconds = int(form["CallDuration"])
         if call_status in {"completed", "failed", "no-answer", "canceled", "busy"}:
