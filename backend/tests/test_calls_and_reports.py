@@ -34,7 +34,6 @@ async def test_whisper_on_missing_call_404(auth_client: AsyncClient) -> None:
 
 
 async def test_report_generate_requires_redis_or_enqueues(auth_client: AsyncClient) -> None:
-    # enqueue is best-effort; the report row is still created.
     r = await auth_client.post("/api/reports/generate")
     assert r.status_code in (202, 409)
     if r.status_code == 202:
@@ -49,7 +48,7 @@ async def test_integration_connection_test(auth_client: AsyncClient) -> None:
     twilio = next(i for i in integrations if i["provider"] == "twilio")
     r = await auth_client.post(f"/api/integrations/{twilio['id']}/test")
     assert r.status_code == 200
-    assert r.json()["ok"] is False  # nothing configured in tests
+    assert r.json()["ok"] is False
 
 
 async def test_avatar_submit_requires_video(auth_client: AsyncClient) -> None:

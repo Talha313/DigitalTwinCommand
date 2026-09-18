@@ -48,8 +48,6 @@ class LipSyncClient:
     @property
     def configured(self) -> bool:
         if self.provider == "elevenlabs":
-            # did_source_url doubles as "the reference photo" for both
-            # providers — it's just a public photo of Howie either way.
             return bool(settings.elevenlabs_api_key and settings.did_source_url)
         if self.provider == "heygen":
             return bool(settings.lipsync_api_key and settings.heygen_avatar_id)
@@ -71,7 +69,6 @@ class LipSyncClient:
             return await self._elevenlabs(audio_url=audio_url)
         raise NotConfiguredError(f"Unknown lipsync provider {self.provider!r}")
 
-    # --- HeyGen --------------------------------------------------------
 
     async def _heygen(self, *, audio_url: str, aspect: str) -> str:
         w, h = (720, 1280) if aspect == "9x16" else (1280, 720)
@@ -98,7 +95,7 @@ class LipSyncClient:
         except (httpx.HTTPError, KeyError) as exc:
             raise UpstreamError(f"HeyGen submit failed: {exc}") from exc
 
-        for _ in range(120):  # ~20 min max
+        for _ in range(120):
             await asyncio.sleep(10)
             try:
                 s = await shared_client().get(
@@ -116,7 +113,6 @@ class LipSyncClient:
                 raise UpstreamError(f"HeyGen render failed: {data.get('error')}")
         raise UpstreamError("HeyGen render timed out.")
 
-    # --- ElevenLabs (Flows Video, creatify-aurora) ----------------------
 
     async def _elevenlabs(self, *, audio_url: str) -> str:
         """No aspect_ratio param exists for this model — the output inherits
@@ -128,9 +124,6 @@ class LipSyncClient:
         audio_b64, audio_mime = await self._fetch_b64(audio_url)
 
         try:
-            # Same reasoning as _fetch_b64's timeout: the base64-inlined
-            # audio pushes this request body to ~10-15MB, which the shared
-            # client's default 30s timeout isn't enough to even upload.
             resp = await shared_client().post(
                 f"{_ELEVEN_API}/flows/video",
                 headers=headers,
@@ -155,7 +148,7 @@ class LipSyncClient:
         except (httpx.HTTPError, KeyError) as exc:
             raise UpstreamError(f"ElevenLabs video submit failed: {exc}") from exc
 
-        for _ in range(120):  # ~20 min max
+        for _ in range(120):
             await asyncio.sleep(10)
             try:
                 s = await shared_client().get(
@@ -177,12 +170,6 @@ class LipSyncClient:
 
     @staticmethod
     async def _fetch_b64(url: str) -> tuple[str, str]:
-        # When this URL is our own local-storage media route, read the file
-        # straight off disk instead of round-tripping through the public dev
-        # tunnel — a multi-MB file over a free ngrok tunnel has been observed
-        # dropping mid-transfer (not a timeout — the peer just closes the
-        # connection a few % from the end). S3-backed / external URLs still
-        # go over HTTP below, with a generous timeout for the same reason.
         prefix = f"{settings.public_base}/media/"
         if storage.backend == "local" and url.startswith(prefix):
             key = url[len(prefix) :]
@@ -202,7 +189,6 @@ class LipSyncClient:
         mime = resp.headers.get("content-type", "application/octet-stream").split(";")[0]
         return base64.b64encode(resp.content).decode(), mime
 
-    # --- D-ID ---------------------------------------------------------
 
     async def _did(self, *, audio_url: str) -> str:
         auth = (settings.lipsync_api_key, "")

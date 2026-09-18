@@ -13,5 +13,5 @@ class AuditLogRead(ORMModel):
     action: str
     entity_type: str | None = None
     entity_id: str | None = None
-    meta: dict | None = None  # DB column "metadata"
+    meta: dict | None = None
     created_at: datetime

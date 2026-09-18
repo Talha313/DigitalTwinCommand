@@ -19,12 +19,6 @@ from app.providers.http import shared_client
 log = get_logger(__name__)
 
 _BASE = "https://api.x.ai/v1"
-# Grok's default reasoning effort makes even non-search calls slow — a plain
-# script-writing call (no search, ~6000 output tokens) has been observed
-# taking 300s+ and still timing out at 180s. The report worker tolerates a
-# generous timeout (never on a live request), so it keeps default reasoning
-# effort; interactive chat (stream_chat below) asks for low effort instead so
-# it stays responsive.
 _TIMEOUT = httpx.Timeout(600.0, connect=10.0)
 _CHAT_TIMEOUT = httpx.Timeout(120.0, connect=10.0)
 

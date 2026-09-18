@@ -38,7 +38,7 @@ class ConversationService(Service):
 
     async def _set_role_ids(self, conversation_id, role_ids: list[str]) -> None:
         if role_ids:
-            await load_roles_for_prompt(self.session, role_ids)  # validates
+            await load_roles_for_prompt(self.session, role_ids)
         await self.session.execute(
             delete(conversation_roles).where(
                 conversation_roles.c.conversation_id == as_uuid(conversation_id)

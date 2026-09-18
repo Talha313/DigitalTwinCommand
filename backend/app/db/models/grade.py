@@ -15,7 +15,7 @@ from app.db.base import Base, UUIDMixin
 class Grade(UUIDMixin, Base):
     __tablename__ = "grades"
 
-    subject_type: Mapped[str] = mapped_column(String(60))  # e.g. "message", "call", "report"
+    subject_type: Mapped[str] = mapped_column(String(60))
     subject_id: Mapped[uuid.UUID] = mapped_column(Uuid, index=True)
     score: Mapped[float | None] = mapped_column(Float)
     notes: Mapped[str | None] = mapped_column(Text)

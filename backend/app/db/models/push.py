@@ -20,7 +20,7 @@ class PushSubscription(UUIDMixin, Base):
         ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     endpoint: Mapped[str] = mapped_column(Text)
-    keys: Mapped[dict] = mapped_column(JSONB)  # {"p256dh": ..., "auth": ...}
+    keys: Mapped[dict] = mapped_column(JSONB)
     user_agent: Mapped[str | None] = mapped_column(String(400))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

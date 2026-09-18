@@ -14,7 +14,6 @@ os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("DEBUG", "true")
 os.environ.setdefault("BOOTSTRAP_ADMIN_PASSWORD", "")
 os.environ.setdefault("SESSION_SECRET", "test-secret-0123456789abcdef0123456789")
-# Unreachable Redis → enqueue() no-ops; tests exercise the inline fallback path.
 os.environ.setdefault("REDIS_URL", "redis://localhost:6399/0")
 
 import pytest_asyncio
@@ -70,7 +69,6 @@ async def auth_client(client: AsyncClient) -> AsyncClient:
             await session.execute(select(User).where(User.email == email))
         ).scalar_one()
         user.role = UserRole.ADMIN
-    # re-login so the access token carries the admin claim
     resp = await client.post(
         "/api/auth/login", json={"email": email, "password": "supersecret123"}
     )

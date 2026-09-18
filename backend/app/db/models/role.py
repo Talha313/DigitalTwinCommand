@@ -28,8 +28,6 @@ from app.db.models.enums import RiskLevel
 class Permission(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "permissions"
 
-    # Dotted identifier, e.g. "portfolio.read", "workflow.execute",
-    # "message.send", "report.generate".
     name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     description: Mapped[str | None] = mapped_column(Text)
 
@@ -98,7 +96,6 @@ class RoleTool(UUIDMixin, Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
-# Role assignment to a conversation (call_roles is a mapped model — see call.py).
 
 conversation_roles = Table(
     "conversation_roles",

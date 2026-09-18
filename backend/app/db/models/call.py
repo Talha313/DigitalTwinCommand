@@ -47,7 +47,6 @@ class Call(UUIDMixin, Base):
     recording_url: Mapped[str | None] = mapped_column(Text)
     recording_consent: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    # Denormalised review metadata (filled when the call ends).
     model: Mapped[str | None] = mapped_column(String(120))
     summary: Mapped[str | None] = mapped_column(Text)
     tool_call_count: Mapped[int] = mapped_column(Integer, default=0)

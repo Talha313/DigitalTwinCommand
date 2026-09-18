@@ -55,7 +55,6 @@ async def test_operator_cannot_create_role(client: AsyncClient) -> None:
     await client.post(
         "/api/auth/signup", json={"email": "op@example.com", "password": "password123"}
     )
-    # second signup => operator
     r = await client.post(
         "/api/auth/signup", json={"email": "op2@example.com", "password": "password123"}
     )

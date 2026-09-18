@@ -59,7 +59,6 @@ class CallSession:
         self._to_agent = twilio_to_agent("ulaw_8000")
         self._to_twilio = agent_to_twilio("ulaw_8000")
 
-    # --- lifecycle -------------------------------------------------------
 
     async def start(self) -> None:
         system = ""
@@ -71,9 +70,6 @@ class CallSession:
             log.exception("prompt build failed; using default")
             system = build_system_prompt([], channel="call")
 
-        # Learn the agent's audio format so we can transcode to/from Twilio's
-        # μ-law 8 kHz, and warn if prompt overrides are disabled (then the
-        # role-based system prompt below is ignored by ElevenLabs).
         prompt_override_ok = True
         language_override_ok = True
         first_message_override_ok = True
@@ -106,10 +102,6 @@ class CallSession:
             log.warning("could not read agent config; assuming ulaw_8000 + overrides on")
 
         self.eleven_ws = await self._connect_eleven()
-        # Only send overrides the agent's Security -> Overrides settings actually
-        # permit. ElevenLabs doesn't ignore a disallowed override field — it stalls
-        # the whole conversation after the initial handshake instead of ever
-        # starting a turn, which looks exactly like total silence on the call.
         agent_override: dict[str, Any] = {}
         if prompt_override_ok:
             agent_override["prompt"] = {"prompt": system}
@@ -151,7 +143,7 @@ class CallSession:
                 )
                 if attempt < attempts:
                     await asyncio.sleep(1)
-        raise last_exc  # type: ignore[misc]
+        raise last_exc
 
     def attach_twilio(self, ws: Any, stream_sid: str) -> None:
         self.twilio_ws = ws
@@ -174,7 +166,6 @@ class CallSession:
         registry.pop(self.call_id, None)
         hub.drop(self.call_id)
 
-    # --- Twilio -> ElevenLabs -----------------------------------------
 
     async def on_twilio_media(self, payload_b64: str) -> None:
         if self.eleven_ws is None or self._closing or self.muted or self.held:
@@ -184,7 +175,6 @@ class CallSession:
             await self.eleven_ws.send(json.dumps({"user_audio_chunk": chunk}))
 
     async def on_twilio_stop(self, ws: Any = None) -> None:
-        # A previous stream may finish after the resumed stream attaches.
         if ws is not None and ws is not self.twilio_ws:
             return
         self.twilio_ws = None
@@ -192,7 +182,6 @@ class CallSession:
         if not self.held:
             await self.close(reason="caller_hangup")
 
-    # --- ElevenLabs -> Twilio + transcript ---------------------------
 
     async def _pump_eleven(self) -> None:
         assert self.eleven_ws is not None
@@ -223,7 +212,7 @@ class CallSession:
         elif mtype == "ping":
             event_id = msg.get("ping_event", {}).get("event_id")
             with contextlib.suppress(ConnectionClosed):
-                await self.eleven_ws.send(  # type: ignore[union-attr]
+                await self.eleven_ws.send(
                     json.dumps({"type": "pong", "event_id": event_id})
                 )
 
@@ -252,7 +241,6 @@ class CallSession:
                     log.exception("call %s failed to relay audio to twilio", self.call_id)
 
         elif mtype == "interruption":
-            # Barge-in: flush whatever Twilio has buffered.
             if self.twilio_ws is not None and self.stream_sid:
                 with contextlib.suppress(Exception):
                     await self.twilio_ws.send_text(
@@ -287,9 +275,6 @@ class CallSession:
             )
 
         elif mtype == "agent_tool_response":
-            # Webhook/server tools (e.g. web_search) report here, not via
-            # client_tool_call. Log the full payload while we confirm the
-            # exact field names ElevenLabs sends for this event.
             event = msg.get("agent_tool_response_event", msg.get("agent_tool_response", {}))
             log.info("call %s tool response payload: %s", self.call_id, json.dumps(event))
             self._publish(
@@ -298,7 +283,6 @@ class CallSession:
                 status=event.get("status") or event.get("is_error"),
             )
 
-    # --- whisper injection ------------------------------------------
 
     async def inject_whisper(self, whisper_id: str, text: str, kind: WhisperKind) -> None:
         if self.eleven_ws is None or self._closing or self.held:
@@ -337,7 +321,6 @@ class CallSession:
             gold=True,
         )
 
-    # --- persistence helpers --------------------------------------
 
     async def _record_utterance(
         self, speaker: UtteranceSpeaker, text: str, source: UtteranceSource
@@ -386,7 +369,6 @@ class CallSession:
                 call.duration_seconds = int((ended - call.started_at).total_seconds())
             if call.status not in {CallStatus.FAILED, CallStatus.NO_ANSWER}:
                 call.status = CallStatus.COMPLETED
-        # Kick off post-call enrichment (summary + memory extraction).
         with contextlib.suppress(Exception):
             from app.worker.queue import enqueue
 
@@ -411,11 +393,6 @@ async def get_or_create_session(
     if sess is None:
         sess = CallSession(call_id, role_ids=role_ids, first_message=first_message)
         registry[call_id] = sess
-        # Attach before start(): start() connects to ElevenLabs and spawns the
-        # audio pump task, which can receive the agent's first (greeting)
-        # audio chunk almost immediately. If twilio_ws isn't set yet, that
-        # audio is silently dropped instead of relayed — attaching first
-        # closes that window.
         sess.attach_twilio(ws, stream_sid)
         await sess.start()
     else:

@@ -46,7 +46,6 @@ async def elevenlabs_webhook(request: Request) -> Response:
         await _handle_failure(data)
         return Response(status_code=204)
 
-    # post_call_transcription (default)
     conversation_id = data.get("conversation_id")
     if not conversation_id:
         return Response(status_code=204)
@@ -65,7 +64,6 @@ async def elevenlabs_webhook(request: Request) -> Response:
             return Response(status_code=204)
         live = registry.get(str(call.id))
         if live is not None and not live._closing:
-            # An agent conversation can expire while the telephone call is held.
             return Response(status_code=204)
         if summary := analysis.get("transcript_summary"):
             call.summary = summary

@@ -127,8 +127,6 @@ class RoleService(Service):
             await self.session.flush()
         except IntegrityError as exc:
             raise ConflictError("That role name is already taken.") from exc
-        # The secondary-table relationships were changed via Core statements;
-        # drop the stale collections so get_role reloads them.
         self.session.expire(role, ["permissions", "tools"])
         return await self.get_role(role_id)
 
@@ -211,7 +209,6 @@ def get_tools_service(session: AsyncSession = Depends(db_session)) -> ToolServic
     return ToolService(session)
 
 
-# Re-exported for services that need to resolve a role's live config.
 async def load_roles_for_prompt(session: AsyncSession, role_ids: list[str]) -> list[Role]:
     if not role_ids:
         return []

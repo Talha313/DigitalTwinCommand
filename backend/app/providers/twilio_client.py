@@ -33,7 +33,6 @@ class TwilioClient:
             raise NotConfiguredError("Twilio credentials are not fully configured.")
         return (settings.twilio_account_sid, settings.twilio_auth_token)
 
-    # --- calls -----------------------------------------------------------
 
     async def create_call(
         self, *, to: str, answer_url: str, status_callback: str
@@ -122,7 +121,6 @@ class TwilioClient:
             raise UpstreamError(f"Twilio recording fetch failed: {exc}") from exc
         return resp.content, resp.headers.get("content-type", "audio/mpeg")
 
-    # --- TwiML ---------------------------------------------------------
 
     @staticmethod
     def stream_twiml(stream_url: str, *, call_id: str) -> str:
@@ -143,7 +141,6 @@ class TwilioClient:
             "</Play></Response>"
         )
 
-    # --- webhook validation -------------------------------------------
 
     @staticmethod
     def validate_signature(url: str, params: dict[str, str], signature: str | None) -> bool:

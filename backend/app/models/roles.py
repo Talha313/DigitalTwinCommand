@@ -8,12 +8,11 @@ from pydantic import BaseModel
 from app.db.models.enums import RiskLevel
 from app.models.base import ORMModel
 
-# --- permissions ---------------------------------------------------------------
 
 
 class PermissionRead(ORMModel):
     id: str
-    name: str  # e.g. "portfolio.read"
+    name: str
     description: str | None = None
 
 
@@ -22,7 +21,6 @@ class PermissionCreate(BaseModel):
     description: str | None = None
 
 
-# --- tools / API access ------------------------------------------------------
 
 
 class ToolRead(ORMModel):
@@ -45,7 +43,6 @@ class RoleToolAccess(ORMModel):
     enabled: bool = True
 
 
-# --- roles -------------------------------------------------------------------
 
 
 class RoleBase(BaseModel):

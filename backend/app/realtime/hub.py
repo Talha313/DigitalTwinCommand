@@ -28,7 +28,7 @@ class CallChannel:
         for q in list(self._subscribers):
             try:
                 q.put_nowait(event)
-            except asyncio.QueueFull:  # pragma: no cover
+            except asyncio.QueueFull:
                 log.warning("dropping event for slow subscriber call=%s", self.call_id)
 
     def replay(self, after_seq: int) -> list[dict[str, Any]]:

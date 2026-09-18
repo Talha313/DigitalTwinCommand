@@ -34,7 +34,6 @@ class ElevenLabsClient:
             raise NotConfiguredError("ELEVENLABS_API_KEY is not set.")
         return {"xi-api-key": settings.elevenlabs_api_key}
 
-    # --- agent / conversations --------------------------------------------
 
     async def get_signed_url(self, agent_id: str | None = None) -> str:
         """Signed WSS URL to open a conversation with a (possibly private) agent."""
@@ -76,7 +75,6 @@ class ElevenLabsClient:
         resp.raise_for_status()
         return resp.json()
 
-    # --- long-form TTS for the daily report -------------------------------
 
     async def tts(
         self,
@@ -111,16 +109,14 @@ class ElevenLabsClient:
             raise UpstreamError(f"ElevenLabs TTS failed: {exc}") from exc
         return resp.content
 
-    # --- webhook signature ----------------------------------------------
 
     @staticmethod
     def verify_webhook(payload: bytes, signature_header: str | None) -> bool:
         secret = settings.elevenlabs_webhook_secret
         if not secret:
-            return not settings.is_production  # allow in dev, reject in prod
+            return not settings.is_production
         if not signature_header:
             return False
-        # Header format: "t=<ts>,v0=<hex>"
         parts = dict(p.split("=", 1) for p in signature_header.split(",") if "=" in p)
         ts, sig = parts.get("t"), parts.get("v0")
         if not ts or not sig:

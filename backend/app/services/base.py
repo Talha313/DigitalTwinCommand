@@ -35,7 +35,7 @@ class Service:
         options: list[Any] | None = None,
         label: str | None = None,
     ) -> ModelT:
-        stmt = select(model).where(model.id == as_uuid(obj_id))  # type: ignore[attr-defined]
+        stmt = select(model).where(model.id == as_uuid(obj_id))
         for opt in options or []:
             stmt = stmt.options(opt)
         obj = (await self.session.execute(stmt)).scalar_one_or_none()

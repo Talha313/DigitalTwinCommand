@@ -38,7 +38,7 @@ async def voice(
     request: Request, call_id: str = "", first_message: str = "", resume: bool = False
 ) -> Response:
     """Answer webhook — returns the <Stream> TwiML that bridges media to us."""
-    form = dict((await request.form()).items())  # type: ignore[arg-type]
+    form = dict((await request.form()).items())
     if not await _validate(request, form):
         return _twiml("<Response><Reject/></Response>")
 
@@ -52,7 +52,6 @@ async def voice(
         else:
             call = None
         if call is None:
-            # Inbound call — create the record now.
             call = Call(
                 direction=CallDirection.INCOMING,
                 status=CallStatus.IN_PROGRESS,
@@ -67,15 +66,6 @@ async def voice(
             call.twilio_sid = call.twilio_sid or twilio_sid
             call.status = CallStatus.IN_PROGRESS
 
-    # MachineDetection=Enable (twilio_client.create_call) makes Twilio wait
-    # for AMD before fetching this webhook, so AnsweredBy is already known
-    # here on the initial answer. Only outbound calls carry it — inbound has
-    # no caller to detect, and a /voice hit for `resume` (returning from
-    # hold) is a mid-call redirect, not an answer event, so it's absent
-    # there too; both leave answered_by empty and fall through normally.
-    # Note this only catches Twilio's own machine/fax classification — it
-    # won't catch AMD *false positives* that report "human" when nothing
-    # actually picked up.
     answered_by = (form.get("AnsweredBy") or "").lower()
     if answered_by.startswith("machine") or answered_by == "fax":
         log.info("call %s: AnsweredBy=%s — not a human pickup, hanging up", call_id, answered_by)
@@ -85,14 +75,6 @@ async def voice(
                 call.status = CallStatus.NO_ANSWER
         return _twiml("<Response><Hangup/></Response>")
 
-    # Record every call by default. Twilio recording runs independently of
-    # whatever TwiML verb is active, so starting it here (rather than via
-    # <Record>, which would block <Connect><Stream>) works for both legs —
-    # this same handler answers inbound calls and the outbound answer_url.
-    # Twilio never includes RecordingUrl on the regular call StatusCallback
-    # (recording processing finishes after the call itself does) — it only
-    # ever posts it to a dedicated RecordingStatusCallback, so that's what
-    # /twilio/recording-status below is for.
     if twilio_sid and twilio_client.configured and not resume:
         try:
             await twilio_client.start_recording(
@@ -115,7 +97,7 @@ async def hold() -> Response:
 
 @router.post("/status")
 async def status_callback(request: Request, call_id: str = "") -> Response:
-    form = dict((await request.form()).items())  # type: ignore[arg-type]
+    form = dict((await request.form()).items())
     if not await _validate(request, form):
         return Response(status_code=403)
 
@@ -135,10 +117,6 @@ async def status_callback(request: Request, call_id: str = "") -> Response:
         async with session_scope() as session:
             call = await session.get(Call, as_uuid(call_id))
             if call is not None:
-                # A machine/fax pickup (/voice's AnsweredBy check) already
-                # set NO_ANSWER and hung up itself — Twilio still reports
-                # that hangup as a normal "completed" event afterwards, so
-                # don't let it clobber the more accurate status back.
                 if not (call_status == "completed" and call.status == CallStatus.NO_ANSWER):
                     call.status = mapping[call_status]
                 if form.get("CallDuration"):
@@ -156,7 +134,7 @@ async def recording_status_callback(request: Request, call_id: str = "") -> Resp
     RecordingUrl. Fired once the (dual-channel) recording has finished
     processing, which is typically a few seconds after the call's own
     "completed" /twilio/status callback."""
-    form = dict((await request.form()).items())  # type: ignore[arg-type]
+    form = dict((await request.form()).items())
     if not await _validate(request, form):
         return Response(status_code=403)
 
@@ -179,11 +157,6 @@ async def media_stream(ws: WebSocket) -> None:
             try:
                 raw = await ws.receive_text()
             except RuntimeError:
-                # The bridge's own CallSession.close() (triggered from the
-                # ElevenLabs side, or a Twilio status callback) can close this
-                # same websocket concurrently — Starlette then raises here
-                # instead of a clean WebSocketDisconnect. Same outcome either
-                # way: the call ended, nothing to log as an error.
                 break
             frame = json.loads(raw)
             event = frame.get("event")

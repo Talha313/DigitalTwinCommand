@@ -33,7 +33,6 @@ class NotificationService(Service):
     async def mark_read(self, notification_id: str, *, user_id: str) -> NotificationRead:
         notif = await self._get(Notification, notification_id, label="Notification")
         if str(notif.user_id) != user_id:
-            # Same as "not found" from this user's point of view.
             raise NotFoundError("Notification not found")
         if notif.read_at is None:
             notif.read_at = datetime.now(UTC)

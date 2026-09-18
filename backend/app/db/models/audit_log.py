@@ -19,6 +19,5 @@ class AuditLog(UUIDMixin, Base):
     action: Mapped[str] = mapped_column(String(120))
     entity_type: Mapped[str | None] = mapped_column(String(60))
     entity_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, index=True)
-    # DB column is "metadata"; attribute renamed (SQLAlchemy reserves Base.metadata).
     meta: Mapped[dict | None] = mapped_column("metadata", JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

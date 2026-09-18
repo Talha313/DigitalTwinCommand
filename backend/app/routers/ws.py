@@ -39,7 +39,6 @@ async def call_stream(ws: WebSocket, call_id: str, token: str = "", after: int =
     await ws.accept()
     channel = hub.channel(call_id)
 
-    # Replay anything the client missed.
     for event in channel.replay(after):
         await ws.send_json(event)
 
@@ -54,7 +53,7 @@ async def call_stream(ws: WebSocket, call_id: str, token: str = "", after: int =
                 t.cancel()
             if recv in done:
                 with contextlib.suppress(Exception):
-                    recv.result()  # client -> server messages are ignored for now
+                    recv.result()
             if nxt in done:
                 await ws.send_json(nxt.result())
     except (WebSocketDisconnect, RuntimeError):

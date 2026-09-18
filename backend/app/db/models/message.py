@@ -23,8 +23,6 @@ class Message(UUIDMixin, Base):
     )
     role: Mapped[MessageRole] = mapped_column(Enum(MessageRole, name="message_role"))
     content: Mapped[str] = mapped_column(Text)
-    # DB column is "metadata"; the attribute is renamed because SQLAlchemy
-    # reserves ``Base.metadata``.
     meta: Mapped[dict | None] = mapped_column("metadata", JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

@@ -66,7 +66,6 @@ def key_from_url(url: str) -> str | None:
     if settings.s3_public_base_url:
         prefix = f"{settings.s3_public_base_url.rstrip('/')}/"
         return url[len(prefix) :] if url.startswith(prefix) else None
-    # Presigned URL: the key is the path, everything before the query string.
     return urlparse(url).path.lstrip("/") or None
 
 
@@ -77,7 +76,7 @@ class Storage:
 
     @property
     def configured(self) -> bool:
-        return True  # local disk is always available
+        return True
 
     async def put(self, key: str, data: bytes, *, content_type: str) -> str:
         if _use_s3():

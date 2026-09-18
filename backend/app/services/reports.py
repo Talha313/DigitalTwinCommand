@@ -115,7 +115,6 @@ class ReportService(Service):
 
         job = await enqueue("package_report", str(report.id), raw)
         if job is None:
-            # No Redis (e.g. local dev) — package inline, best effort.
             task = asyncio.create_task(_safe_finalize(str(report.id), raw))
             _bg_tasks.add(task)
             task.add_done_callback(_bg_tasks.discard)

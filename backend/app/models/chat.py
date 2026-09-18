@@ -10,12 +10,11 @@ class ChatRequest(BaseModel):
     conversation_id: str | None = None
     content: str = Field(min_length=1, max_length=8000)
     role_ids: list[str] = []
-    # If no conversation_id is given a new conversation is created with this title.
     title: str | None = None
 
 
 class ChatChunk(BaseModel):
-    type: str  # "start" | "delta" | "done" | "error"
+    type: str
     conversation_id: str | None = None
     message_id: str | None = None
     text: str | None = None

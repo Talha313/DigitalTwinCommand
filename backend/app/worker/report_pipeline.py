@@ -74,7 +74,7 @@ async def _stage(
 ) -> None:
     async with session_scope() as session:
         if await session.get(Report, as_uuid(report_id)) is None:
-            return  # report deleted — nothing to record
+            return
         row = (
             await session.execute(
                 select(ReportJob).where(
@@ -108,7 +108,6 @@ async def research_and_script(report_id: str) -> ReportStatus:
     """Stages 1-2. Ends at SCRIPT_READY (or APPROVED if approval is off)."""
     await _require_report(report_id)
     log.info("report %s using xAI (%s) for research + script", report_id, settings.xai_model)
-    # --- research ---
     await _set_status(report_id, ReportStatus.RESEARCHING)
     await _stage(report_id, ReportStage.RESEARCH, ReportJobStatus.RUNNING)
     try:
@@ -126,9 +125,6 @@ async def research_and_script(report_id: str) -> ReportStatus:
 
     cost_cents = _cost_cents(res.get("usage", {}))
 
-    # X/Twitter headlines — the main web_search tool above doesn't reach X.
-    # Never fails the report; if this call errors, the brief just goes out
-    # without it.
     x_search_trace: dict | None = None
     if xai_client.configured:
         try:
@@ -152,7 +148,6 @@ async def research_and_script(report_id: str) -> ReportStatus:
         report.model = res.get("model")
     await _stage(report_id, ReportStage.RESEARCH, ReportJobStatus.COMPLETED)
 
-    # --- script ---
     await _stage(report_id, ReportStage.SCRIPT, ReportJobStatus.RUNNING)
     try:
         script_res = await xai_client.complete(
@@ -175,9 +170,6 @@ async def research_and_script(report_id: str) -> ReportStatus:
         if report is None:
             raise ReportGone(f"Report {report_id} no longer exists.")
         report.script = script_res["text"]
-        # LLM (research + x_search + script) cost only — ElevenLabs TTS and
-        # avatar-video don't return per-request cost the way xAI does, so
-        # this is a real, exact figure for the Grok side, not a full total.
         report.cost_cents = cost_cents
     await _stage(report_id, ReportStage.SCRIPT, ReportJobStatus.COMPLETED)
 
@@ -235,7 +227,6 @@ async def render(report_id: str) -> None:
         await _set_status(report_id, ReportStatus.FAILED, error="No script to render.")
         raise AppError("No script to render.")
 
-    # --- voice ---
     await _stage(report_id, ReportStage.VOICE, ReportJobStatus.RUNNING)
     chunks = _chunk_script(script)
     log.info("report %s: synthesizing voice in %d chunk(s)", report_id, len(chunks))
@@ -249,7 +240,7 @@ async def render(report_id: str) -> None:
     audio_url = await storage.put(f"{report_key}/audio.mp3", audio, content_type="audio/mpeg")
     await _stage(report_id, ReportStage.VOICE, ReportJobStatus.COMPLETED)
 
-    total_seconds = max(60.0, len(script.split()) / 150 * 60)  # ~150 wpm
+    total_seconds = max(60.0, len(script.split()) / 150 * 60)
     srt_text = media.build_srt(script, total_seconds=total_seconds)
     captions_url = await storage.put(
         f"{report_key}/captions.srt", srt_text.encode(), content_type="text/plain"
@@ -259,7 +250,6 @@ async def render(report_id: str) -> None:
         report.audio_url = audio_url
         report.captions_url = captions_url
 
-    # --- avatar ---
     await _stage(report_id, ReportStage.AVATAR, ReportJobStatus.RUNNING)
     if lipsync_client.provider == "elevenlabs" and not lipsync_client.automated:
         await _stage(

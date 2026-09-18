@@ -51,7 +51,5 @@ class SessionResponse(BaseModel):
 
 
 class ForgotPasswordResponse(BaseModel):
-    # Deliberately generic — never reveals whether the email exists.
     ok: bool = True
-    # Only populated in non-production so the flow is testable without email.
     reset_token: str | None = None

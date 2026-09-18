@@ -70,8 +70,8 @@ class WhisperStatus(StrEnum):
 class WhisperKind(StrEnum):
     """How the whisper is delivered to the ElevenLabs conversation."""
 
-    CONTEXTUAL_UPDATE = "contextual_update"  # non-interrupting operator note
-    USER_MESSAGE = "user_message"  # forces a turn / barge-in
+    CONTEXTUAL_UPDATE = "contextual_update"
+    USER_MESSAGE = "user_message"
 
 
 class IntegrationStatus(StrEnum):
@@ -86,7 +86,7 @@ class ReportStatus(StrEnum):
     SCRIPT_READY = "script_ready"
     APPROVED = "approved"
     GENERATING = "generating"
-    AWAITING_AVATAR = "awaiting_avatar"  # audio ready; operator renders in ElevenCreative
+    AWAITING_AVATAR = "awaiting_avatar"
     READY = "ready"
     FAILED = "failed"
 

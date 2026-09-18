@@ -11,10 +11,10 @@ import warnings
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore", DeprecationWarning)
-    try:  # stdlib on 3.12, `audioop-lts` shim on 3.13+
+    try:
         import audioop
-    except ModuleNotFoundError:  # pragma: no cover
-        audioop = None  # type: ignore[assignment]
+    except ModuleNotFoundError:
+        audioop = None
 
 from app.core.logging import get_logger
 
@@ -44,7 +44,7 @@ class Transcoder:
         self.dst_enc, self.dst_rate = dst
         self._state = None
         self.passthrough = src == dst
-        if not self.passthrough and audioop is None:  # pragma: no cover
+        if not self.passthrough and audioop is None:
             log.error(
                 "audio transcoding needed (%s->%s) but `audioop` is unavailable; "
                 "set the ElevenLabs agent audio format to ulaw_8000",
@@ -60,12 +60,9 @@ class Transcoder:
     def convert(self, data: bytes) -> bytes:
         if self.passthrough or audioop is None:
             return data
-        # -> 16-bit linear PCM at source rate
         pcm = audioop.ulaw2lin(data, 2) if self.src_enc == "ulaw" else data
-        # resample
         if self.src_rate != self.dst_rate:
             pcm, self._state = audioop.ratecv(pcm, 2, 1, self.src_rate, self.dst_rate, self._state)
-        # -> target encoding
         return audioop.lin2ulaw(pcm, 2) if self.dst_enc == "ulaw" else pcm
 
 

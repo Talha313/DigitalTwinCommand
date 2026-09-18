@@ -77,7 +77,6 @@ def create_app() -> FastAPI:
 
     app.include_router(api_router)
     app.include_router(webhook_router)
-    # Forgiving alias so /api/twilio/* and /api/webhooks/* also resolve.
     app.include_router(webhook_router, prefix="/api")
     app.include_router(ws_router)
     return app

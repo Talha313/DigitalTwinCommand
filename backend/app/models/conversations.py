@@ -9,7 +9,6 @@ from pydantic import BaseModel
 from app.db.models.enums import MessageRole
 from app.models.base import ORMModel
 
-# --- messages --------------------------------------------------------------
 
 
 class MessageCreate(BaseModel):
@@ -22,11 +21,10 @@ class MessageRead(ORMModel):
     conversation_id: str
     role: MessageRole
     content: str
-    meta: dict | None = None  # DB column "metadata"
+    meta: dict | None = None
     created_at: datetime
 
 
-# --- conversations -------------------------------------------------------
 
 
 class ConversationCreate(BaseModel):

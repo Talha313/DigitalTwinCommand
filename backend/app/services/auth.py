@@ -40,7 +40,6 @@ def _hash_token(raw: str) -> str:
 
 
 class AuthService(Service):
-    # --- registration / login ------------------------------------------------
 
     async def signup(
         self, data: SignupRequest, *, user_agent: str | None = None, ip: str | None = None
@@ -51,7 +50,6 @@ class AuthService(Service):
         if existing is not None:
             raise ConflictError("An account with this email already exists.")
 
-        # First account created becomes an admin; subsequent ones are operators.
         any_user = (await self.session.execute(select(User.id).limit(1))).first()
         user = User(
             email=data.email.lower(),
@@ -105,7 +103,7 @@ class AuthService(Service):
         if user.status != UserStatus.ACTIVE:
             raise ForbiddenError("This account is disabled.")
 
-        session_row.revoked_at = now  # rotate
+        session_row.revoked_at = now
         return await self._issue_session(user, user_agent=user_agent, ip=ip)
 
     async def logout(self, refresh_token: str | None) -> None:
@@ -121,7 +119,6 @@ class AuthService(Service):
         if row is not None and row.revoked_at is None:
             row.revoked_at = datetime.now(UTC)
 
-    # --- password reset ----------------------------------------------------
 
     async def forgot_password(self, email: str) -> ForgotPasswordResponse:
         user = (
@@ -139,7 +136,6 @@ class AuthService(Service):
             )
         )
         log.info("password reset requested user=%s", user.id)
-        # TODO: send `raw` by email. Returned inline only outside production.
         return ForgotPasswordResponse(ok=True, reset_token=None if settings.is_production else raw)
 
     async def reset_password(self, data: ResetPasswordRequest) -> None:
@@ -157,7 +153,6 @@ class AuthService(Service):
         user = await self._get(User, row.user_id, label="User")
         user.password_hash = hash_password(data.password)
         row.used_at = now
-        # Revoke every active session for this user.
         for s in (
             await self.session.execute(
                 select(RefreshSession).where(
@@ -168,7 +163,6 @@ class AuthService(Service):
         ).scalars():
             s.revoked_at = now
 
-    # --- helpers ---------------------------------------------------------
 
     async def _issue_session(
         self, user: User, *, user_agent: str | None, ip: str | None

@@ -156,8 +156,6 @@ class CallService(Service):
             if held == sess.held:
                 return await self._read(call)
             if held:
-                # Set before redirecting: Twilio can stop the stream before
-                # the REST update returns.
                 sess.held = True
                 try:
                     await twilio_client.redirect_to_hold(
@@ -169,7 +167,6 @@ class CallService(Service):
                 if not sess._closing:
                     sess._publish("status", status="held")
             else:
-                # Keep held until the replacement media stream attaches.
                 await twilio_client.update_call(
                     call.twilio_sid,
                     Url=f"{settings.public_base}/twilio/voice?call_id={call.id}&resume=true",
@@ -197,13 +194,11 @@ class CallService(Service):
         call = await self._get(Call, call_id, label="Call")
         if not call.twilio_sid or not twilio_client.configured:
             raise ValidationError("Call is not connected to Twilio.")
-        # Twilio has no direct mute; we stop relaying caller audio in the bridge.
         sess = registry.get(str(call.id))
         if sess is not None and action == "mute":
             sess.muted = bool(kw.get("muted"))
         return await self._read(call)
 
-    # --- whisper (called by the whispers router) --------------------
 
     async def create_whisper(
         self, call_id: str, data: WhisperCreate, *, user_id: str | None = None
@@ -223,7 +218,6 @@ class CallService(Service):
         self.session.add(whisper)
         await self.session.flush()
         wid = str(whisper.id)
-        # Commit so the bridge's own session can see the row it will update.
         await self.session.commit()
         try:
             await sess.inject_whisper(wid, data.text, data.kind)

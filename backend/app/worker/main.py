@@ -37,9 +37,6 @@ async def _shutdown(ctx: dict[str, Any]) -> None:
 
 class WorkerSettings:
     redis_settings = redis_settings()
-    # arq computes cron next-run times against this tz (Worker.__init__'s
-    # `timezone` param — defaults to the host's local tz otherwise, which
-    # would silently NOT be America/New_York on most deployment hosts).
     timezone = ZoneInfo(settings.report_tz)
     functions = [
         generate_report,
@@ -57,7 +54,6 @@ class WorkerSettings:
             timeout=3600,
             unique=True,
         ),
-        # Ahead of the daily report (03:00 vs. 05:30), same tz, low-traffic hour.
         cron(purge_old_media, hour=3, minute=0, timeout=1800, unique=True),
     ]
     on_startup = _startup
