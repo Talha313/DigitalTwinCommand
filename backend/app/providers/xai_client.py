@@ -5,6 +5,7 @@ the live phone agent; that search tool is configured directly in ElevenLabs
 
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import AsyncIterator
 from typing import Any
@@ -57,16 +58,31 @@ class XAIClient:
             body["max_output_tokens"] = max_tokens
         if web_search:
             body["tools"] = [{"type": "web_search"}]
-        try:
-            resp = await shared_client().post(
-                f"{_BASE}/responses",
-                headers=self._headers(),
-                json=body,
-                timeout=_TIMEOUT,
-            )
-            resp.raise_for_status()
-        except httpx.HTTPError as exc:
-            raise UpstreamError(f"xAI complete failed: {exc}") from exc
+        # A connection-level blip (httpx.TransportError) has been observed
+        # aborting report research/script generation outright with an empty
+        # error message — the same failure mode fixed for ElevenLabs TTS.
+        # Retry that a few times; a real API error still fails fast.
+        last_exc: httpx.TransportError | None = None
+        for attempt in range(3):
+            if attempt:
+                await asyncio.sleep(2 * attempt)
+            try:
+                resp = await shared_client().post(
+                    f"{_BASE}/responses",
+                    headers=self._headers(),
+                    json=body,
+                    timeout=_TIMEOUT,
+                )
+                resp.raise_for_status()
+                break
+            except httpx.TransportError as exc:
+                last_exc = exc
+                log.warning("xAI complete network error (attempt %d/3), retrying: %s", attempt + 1, exc)
+                continue
+            except httpx.HTTPError as exc:
+                raise UpstreamError(f"xAI complete failed: {exc}") from exc
+        else:
+            raise UpstreamError(f"xAI complete failed after 3 attempts: {last_exc}") from last_exc
 
         data = resp.json()
         message = next(

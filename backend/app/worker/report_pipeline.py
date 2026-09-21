@@ -88,20 +88,25 @@ async def _stage(
             row = ReportJob(report_id=as_uuid(report_id), stage=stage)
             session.add(row)
         row.status = status
-        if status == ReportJobStatus.RUNNING and row.started_at is None:
-            row.started_at = now
-        if status in {ReportJobStatus.COMPLETED, ReportJobStatus.FAILED}:
+        if status == ReportJobStatus.RUNNING:
+            if row.started_at is None:
+                row.started_at = now
+            row.completed_at = None  # clear a stale timestamp from a previous attempt
+        elif status in {ReportJobStatus.COMPLETED, ReportJobStatus.FAILED}:
             row.completed_at = now
         row.error_message = error
 
 
 async def _set_status(report_id: str, status: ReportStatus, *, error: str | None = None) -> None:
+    """error=None clears any stale error_message from a previous failed
+    attempt — every non-FAILED call site here passes no error, so a fresh
+    RESEARCHING/GENERATING/etc. transition always starts clean instead of
+    leaving an old failure banner showing after a successful retry."""
     async with session_scope() as session:
         report = await session.get(Report, as_uuid(report_id))
         if report is not None:
             report.status = status
-            if error is not None:
-                report.error_message = error
+            report.error_message = error
 
 
 async def research_and_script(report_id: str) -> ReportStatus:
@@ -228,16 +233,26 @@ async def render(report_id: str) -> None:
         raise AppError("No script to render.")
 
     await _stage(report_id, ReportStage.VOICE, ReportJobStatus.RUNNING)
-    chunks = _chunk_script(script)
-    log.info("report %s: synthesizing voice in %d chunk(s)", report_id, len(chunks))
-    try:
-        audio_parts = [await elevenlabs_client.tts(chunk) for chunk in chunks]
-    except AppError as exc:
-        await _stage(report_id, ReportStage.VOICE, ReportJobStatus.FAILED, error=exc.message)
-        await _set_status(report_id, ReportStatus.FAILED, error=exc.message)
-        raise
-    audio = await media.concat_audio(audio_parts)
-    audio_url = await storage.put(f"{report_key}/audio.mp3", audio, content_type="audio/mpeg")
+    audio_key = f"{report_key}/audio.mp3"
+    if await storage.exists(audio_key):
+        # A retry after a later stage (avatar) failed — the script hasn't
+        # changed, so re-synthesizing would waste ElevenLabs credits and,
+        # worse, could shift audio byte-length slightly and desync the
+        # per-segment avatar cache in lipsync.py, which keys off this exact
+        # audio content staying stable across attempts.
+        log.info("report %s: reusing existing audio (already synthesized)", report_id)
+        audio_url = await storage.url_for(audio_key)
+    else:
+        chunks = _chunk_script(script)
+        log.info("report %s: synthesizing voice in %d chunk(s)", report_id, len(chunks))
+        try:
+            audio_parts = [await elevenlabs_client.tts(chunk) for chunk in chunks]
+        except AppError as exc:
+            await _stage(report_id, ReportStage.VOICE, ReportJobStatus.FAILED, error=exc.message)
+            await _set_status(report_id, ReportStatus.FAILED, error=exc.message)
+            raise
+        audio = await media.concat_audio(audio_parts)
+        audio_url = await storage.put(audio_key, audio, content_type="audio/mpeg")
     await _stage(report_id, ReportStage.VOICE, ReportJobStatus.COMPLETED)
 
     total_seconds = max(60.0, len(script.split()) / 150 * 60)
@@ -313,6 +328,7 @@ async def finalize_from_videos(
         if "9x16" in final:
             report.video_9x16 = final["9x16"]
         report.status = ReportStatus.READY
+        report.error_message = None
     await _stage(report_id, ReportStage.UPLOAD, ReportJobStatus.COMPLETED)
     log.info("report %s READY", report_id)
 

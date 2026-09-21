@@ -104,6 +104,25 @@ class Storage:
             await asyncio.to_thread(_write)
         return await self.url_for(key)
 
+    async def exists(self, key: str) -> bool:
+        if _use_s3():
+            from botocore.exceptions import ClientError
+
+            def _head() -> bool:
+                try:
+                    _s3().head_object(Bucket=settings.s3_bucket, Key=key)
+                    return True
+                except ClientError as exc:
+                    if exc.response.get("Error", {}).get("Code") in ("404", "NoSuchKey"):
+                        return False
+                    raise
+
+            try:
+                return await asyncio.to_thread(_head)
+            except ClientError:
+                return False
+        return await asyncio.to_thread(lambda: local_path(key).exists())
+
     async def delete(self, key: str) -> None:
         if _use_s3():
             from botocore.exceptions import BotoCoreError, ClientError

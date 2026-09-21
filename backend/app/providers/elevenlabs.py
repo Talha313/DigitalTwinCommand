@@ -4,6 +4,7 @@ dashboard; we only orchestrate audio, transcript and whisper injection."""
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 from typing import Any
@@ -87,27 +88,41 @@ class ElevenLabsClient:
         voice = voice_id or settings.elevenlabs_voice_id
         if not voice:
             raise NotConfiguredError("ELEVENLABS_VOICE_ID (Professional Voice Clone) is not set.")
-        try:
-            resp = await shared_client().post(
-                f"{_BASE}/v1/text-to-speech/{voice}",
-                params={"output_format": output_format},
-                headers={**self._headers(), "accept": "audio/mpeg"},
-                json={
-                    "text": text,
-                    "model_id": model_id,
-                    "voice_settings": {
-                        "stability": 0.5,
-                        "similarity_boost": 0.8,
-                        "style": 0.0,
-                        "use_speaker_boost": True,
+        # A report's script is synthesized as several chunks (report_pipeline
+        # ._chunk_script) — a one-off network blip on any single chunk used
+        # to abort the whole render (this has now been observed in practice).
+        # Retry transient connection errors a few times before giving up;
+        # a real API error (bad request, rate limit, etc.) still fails fast.
+        last_exc: httpx.TransportError | None = None
+        for attempt in range(3):
+            if attempt:
+                await asyncio.sleep(2 * attempt)
+            try:
+                resp = await shared_client().post(
+                    f"{_BASE}/v1/text-to-speech/{voice}",
+                    params={"output_format": output_format},
+                    headers={**self._headers(), "accept": "audio/mpeg"},
+                    json={
+                        "text": text,
+                        "model_id": model_id,
+                        "voice_settings": {
+                            "stability": 0.5,
+                            "similarity_boost": 0.8,
+                            "style": 0.0,
+                            "use_speaker_boost": True,
+                        },
                     },
-                },
-                timeout=httpx.Timeout(180.0, connect=10.0),
-            )
-            resp.raise_for_status()
-        except httpx.HTTPError as exc:
-            raise UpstreamError(f"ElevenLabs TTS failed: {exc}") from exc
-        return resp.content
+                    timeout=httpx.Timeout(180.0, connect=10.0),
+                )
+                resp.raise_for_status()
+            except httpx.TransportError as exc:
+                last_exc = exc
+                log.warning("ElevenLabs TTS network error (attempt %d/3), retrying: %s", attempt + 1, exc)
+                continue
+            except httpx.HTTPError as exc:
+                raise UpstreamError(f"ElevenLabs TTS failed: {exc}") from exc
+            return resp.content
+        raise UpstreamError(f"ElevenLabs TTS failed after 3 attempts: {last_exc}") from last_exc
 
 
     @staticmethod
