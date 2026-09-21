@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: "standalone",
   distDir: process.env.NEXT_DIST_DIR || ".next",
   async rewrites() {
     const backend = process.env.PWA_TEST_BACKEND_URL?.replace(/\/$/, "");

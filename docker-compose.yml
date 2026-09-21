@@ -31,8 +31,8 @@ services:
     volumes: ["dtcc_minio:/data"]
 
   api:
-    build: .
-    env_file: .env
+    build: ./backend
+    env_file: ./backend/.env
     environment:
       DATABASE_URL: postgresql+asyncpg://dtcc:dtcc@db:5432/dtcc
       REDIS_URL: redis://redis:6379/0
@@ -42,13 +42,13 @@ services:
       redis: { condition: service_started }
 
   worker:
-    build: .
+    build: ./backend
     # Not `uv run arq ...` — that re-checks the lockfile against the full
     # (dev-inclusive) group on every container start and was observed
     # re-downloading ruff/pygments at boot. The image's venv is already on
-    # PATH (see Dockerfile), so just exec the binary directly.
+    # PATH (see backend/Dockerfile), so just exec the binary directly.
     command: arq app.worker.main.WorkerSettings
-    env_file: .env
+    env_file: ./backend/.env
     environment:
       DATABASE_URL: postgresql+asyncpg://dtcc:dtcc@db:5432/dtcc
       REDIS_URL: redis://redis:6379/0
@@ -56,6 +56,18 @@ services:
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_started }
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Baked into the client bundle at build time — must be reachable from
+        # the *browser*, not a docker-network hostname like http://api:8000.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports: ["3000:3000"]
+    depends_on:
+      - api
 
 volumes:
   dtcc_pg:
