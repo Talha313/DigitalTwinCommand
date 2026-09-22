@@ -18,7 +18,9 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             <Sidebar className="hidden md:flex" />
             <div className="flex min-w-0 flex-1 flex-col">
               <Header />
-              <main className="flex-1 overflow-y-auto">{children}</main>
+              <main className="flex-1 overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+                {children}
+              </main>
             </div>
           </div>
         </TooltipProvider>

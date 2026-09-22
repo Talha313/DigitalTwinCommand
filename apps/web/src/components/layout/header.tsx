@@ -22,7 +22,10 @@ export function Header() {
   const online = health?.status === "ok";
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border/60 bg-background/80 px-4 backdrop-blur-md sm:px-6">
+    <header
+      className="sticky top-0 z-30 flex shrink-0 items-center gap-3 border-b border-border/60 bg-background/80 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-md sm:px-6"
+      style={{ height: "calc(4rem + env(safe-area-inset-top))" }}
+    >
       <MobileSidebar />
 
       <div className="min-w-0 flex-1">

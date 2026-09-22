@@ -30,9 +30,10 @@ export function Sidebar({ className }: { className?: string }) {
     >
       <div
         className={cn(
-          "flex h-16 shrink-0 items-center border-b border-border/60 px-4",
+          "flex h-16 shrink-0 items-center border-b border-border/60 px-4 pt-[env(safe-area-inset-top)]",
           collapsed && "justify-center px-0",
         )}
+        style={{ height: "calc(4rem + env(safe-area-inset-top))" }}
       >
         <Link
           href="/dashboard"
