@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
@@ -26,6 +27,7 @@ from app.services.notifications import create_notifications
 from app.services.push import notify_users
 from app.worker.report_pipeline import (
     ReportGone,
+    _set_status,
     finalize_from_videos,
     render,
     research_and_script,
@@ -78,6 +80,21 @@ async def render_report(ctx: dict[str, Any], report_id: str) -> None:
     except ReportGone:
         log.info("report %s was deleted; dropping job", report_id)
         return
+    except asyncio.CancelledError:
+        # CancelledError is a BaseException, not an Exception — the generic
+        # handler below never saw it, which is how a render that got killed
+        # by arq's own job_timeout (a real multi-segment avatar render can
+        # legitimately run past an hour) left the report stuck showing
+        # GENERATING/RUNNING forever with no indication anything had failed.
+        # Mark it FAILED before re-raising so the cancellation still
+        # propagates normally.
+        log.exception("report %s render timed out or was cancelled", report_id)
+        await _set_status(
+            report_id,
+            ReportStatus.FAILED,
+            error="Render timed out or was cancelled before completing.",
+        )
+        raise
     except Exception as exc:
         log.exception("report %s render failed", report_id)
         await _page_operators(report_id, f"Report render failed: {exc}")

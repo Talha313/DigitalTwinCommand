@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from arq import cron
+from arq import cron, func
 
 from app.core.config import settings
 from app.core.logging import configure_logging, get_logger
@@ -40,7 +40,14 @@ class WorkerSettings:
     timezone = ZoneInfo(settings.report_tz)
     functions = [
         generate_report,
-        render_report,
+        # A multi-segment avatar render (lipsync.py's own poll budget is up to
+        # 45 min *per segment*, and a long script needs 2-3 segments) can
+        # legitimately exceed the global 1-hour job_timeout below — arq was
+        # observed silently killing an in-progress render at exactly 3600s
+        # with a bare TimeoutError, leaving the report stuck showing
+        # GENERATING forever since that cancellation never reaches our own
+        # error handling in tasks.py.
+        func(render_report, timeout=10800),
         package_report,
         summarize_call,
         run_daily_report,
