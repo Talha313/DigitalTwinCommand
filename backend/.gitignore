@@ -4,4 +4,13 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .env
-var/
+var/*
+# Everything under var/ is generated at runtime (audio, avatar videos,
+# captions, recordings, training exports) except Howie's source photo,
+# which d-id/ElevenLabs need at a stable path and which must ship with the
+# app in every environment rather than depend on a host-local file.
+!var/storage/
+var/storage/*
+!var/storage/avatars/
+var/storage/avatars/*
+!var/storage/avatars/howie.png

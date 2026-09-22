@@ -1,0 +1,13 @@
+# Local-machine convenience only — adds back host access to db/redis/minio
+# for debugging (psql, redis-cli, the MinIO console). Never use this on a
+# publicly reachable host: see the comments in docker-compose.yml for why
+# those ports aren't published there by default.
+#
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+services:
+  db:
+    ports: ["5432:5432"]
+  redis:
+    ports: ["6379:6379"]
+  minio:
+    ports: ["9000:9000", "9001:9001"]

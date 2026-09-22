@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 
 from app.core.ratelimit import limiter
 from app.db.models.enums import UserRole
@@ -16,6 +16,7 @@ router = APIRouter(prefix="/calls", tags=["whispers"])
 @limiter.limit("30/minute")
 async def create_whisper(
     request: Request,
+    response: Response,
     call_id: str,
     body: WhisperCreate,
     user: User = Depends(require_role(UserRole.OPERATOR)),

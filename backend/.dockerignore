@@ -7,4 +7,9 @@ __pycache__
 .git
 tests
 
-var
+var/*
+!var/storage/
+var/storage/*
+!var/storage/avatars/
+var/storage/avatars/*
+!var/storage/avatars/howie.png

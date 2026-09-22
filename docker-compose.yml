@@ -1,13 +1,25 @@
 name: dtcc
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   db:
     image: postgres:16-alpine
+    restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_USER: dtcc
       POSTGRES_PASSWORD: dtcc
       POSTGRES_DB: dtcc
-    ports: ["5432:5432"]
+    # No host port published — only api/worker (same docker network) need to
+    # reach this, by service name. Publishing it would expose a
+    # default-credential Postgres to the internet on any cloud host where
+    # ufw doesn't block Docker-published ports (see docker-compose.dev.yml
+    # for local debugging access).
     volumes: ["dtcc_pg:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dtcc"]
@@ -17,32 +29,45 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports: ["6379:6379"]
+    restart: unless-stopped
+    logging: *default-logging
+    # No host port published — see the `db` comment above; same reasoning.
 
   minio:
     # minio/minio was pulled from Docker Hub entirely (project archived
     # 2026) — quay.io is the only registry it still publishes to.
     image: quay.io/minio/minio:latest
+    restart: unless-stopped
+    logging: *default-logging
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: dtcc
       MINIO_ROOT_PASSWORD: dtcc-secret
-    ports: ["9000:9000", "9001:9001"]
+    # No host port published — see the `db` comment above; same reasoning.
     volumes: ["dtcc_minio:/data"]
 
   api:
     build: ./backend
+    restart: unless-stopped
+    logging: *default-logging
     env_file: ./backend/.env
     environment:
       DATABASE_URL: postgresql+asyncpg://dtcc:dtcc@db:5432/dtcc
       REDIS_URL: redis://redis:6379/0
     ports: ["8000:8000"]
+    # Local-disk media (STORAGE_DIR, default var/storage) lives here — bind
+    # mount so uploads survive container rebuilds and so the worker (which
+    # reads the same files to render reports) sees what the api wrote.
+    # Irrelevant once S3_BUCKET is set, since storage.py switches to MinIO/S3.
+    volumes: ["./backend/var:/app/var"]
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_started }
 
   worker:
     build: ./backend
+    restart: unless-stopped
+    logging: *default-logging
     # Not `uv run arq ...` — that re-checks the lockfile against the full
     # (dev-inclusive) group on every container start and was observed
     # re-downloading ruff/pygments at boot. The image's venv is already on
@@ -53,6 +78,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://dtcc:dtcc@db:5432/dtcc
       REDIS_URL: redis://redis:6379/0
       TZ: America/New_York
+    # See the `api` comment above — worker needs the same local media dir.
+    volumes: ["./backend/var:/app/var"]
     depends_on:
       db: { condition: service_healthy }
       redis: { condition: service_started }
@@ -65,6 +92,8 @@ services:
         # Baked into the client bundle at build time — must be reachable from
         # the *browser*, not a docker-network hostname like http://api:8000.
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    restart: unless-stopped
+    logging: *default-logging
     ports: ["3000:3000"]
     depends_on:
       - api
