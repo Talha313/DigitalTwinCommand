@@ -37,7 +37,10 @@ export function MobileSidebar() {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-72 p-0" aria-describedby={undefined}>
-        <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-border/60 px-5">
+        <div
+          className="flex h-16 shrink-0 items-center gap-2.5 border-b border-border/60 px-5 pt-[env(safe-area-inset-top)]"
+          style={{ height: "calc(4rem + env(safe-area-inset-top))" }}
+        >
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-indigo-500">
             <Waypoints className="h-5 w-5 text-primary-foreground" aria-hidden />
           </span>
@@ -50,7 +53,10 @@ export function MobileSidebar() {
             </span>
           </SheetTitle>
         </div>
-        <nav aria-label="Primary" className="space-y-1 overflow-y-auto p-3">
+        <nav
+          aria-label="Primary"
+          className="space-y-1 overflow-y-auto p-3 pb-[env(safe-area-inset-bottom)]"
+        >
           {NAV_ITEMS.map((item) => {
             const active = isActivePath(pathname, item.href);
             return (

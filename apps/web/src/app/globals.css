@@ -49,6 +49,8 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     text-rendering: optimizeLegibility;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 
   ::selection {
