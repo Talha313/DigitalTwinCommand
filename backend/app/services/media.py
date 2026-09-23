@@ -96,7 +96,14 @@ async def package(*, video_url: str, srt_text: str, aspect: str) -> bytes:
         await _download(video_url, src)
         srt.write_text(srt_text or "1\n00:00:00,000 --> 00:00:01,000\n \n")
 
-        w, h = (1080, 1920) if aspect == "9x16" else (1920, 1080)
+        # 720p, not 1080p: the -preset change alone wasn't enough — a real
+        # render was measured taking longer than the source video's own
+        # runtime (32+ min of encoding for a 13.6 min clip) even at
+        # "veryfast", because subtitle rasterization (libass, per-frame) is
+        # the actual bottleneck on this droplet's CPU, and encoder presets
+        # don't speed that up at all — only resolution does, since it's
+        # roughly proportional to pixel count.
+        w, h = (720, 1280) if aspect == "9x16" else (1280, 720)
         vf = (
             f"scale={w}:{h}:force_original_aspect_ratio=increase,"
             f"crop={w}:{h},"
