@@ -125,7 +125,13 @@ export function startOutboundCall(input: {
 export function sendWhisper(
   callId: string,
   text: string,
-  kind: WhisperKind = "contextual_update",
+  // Always sent explicitly, so the backend's own default (WhisperCreate.kind
+  // in backend/app/models/calls.py) never actually applied — this client
+  // default was silently overriding it on every request. "contextual_update"
+  // is a soft, non-interrupting hint (ElevenLabs' own docs say so); a live
+  // call showed the agent ignoring 3 of 4 operator whispers in a row because
+  // of exactly this. "user_message" forces an immediate response.
+  kind: WhisperKind = "user_message",
 ): Promise<WhisperRead> {
   return apiFetch<WhisperRead>(`/api/calls/${callId}/whispers`, {
     method: "POST",
