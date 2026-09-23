@@ -1,5 +1,8 @@
 "use client";
 
+import * as React from "react";
+import { useSearchParams } from "next/navigation";
+
 import { RiskBadge } from "@/components/roles/risk-badge";
 import { RoleBadge } from "@/components/dashboard/role-badge";
 import { useLiveCall } from "@/hooks/use-live-call";
@@ -33,6 +36,16 @@ export function LiveCallPanel() {
     holdPending,
     sendWhisper,
   } = useLiveCall();
+
+  const searchParams = useSearchParams();
+  const redialNumber = searchParams.get("dial");
+  const redialed = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!redialNumber || redialed.current || loading || state !== "IDLE") return;
+    redialed.current = true;
+    void dial(redialNumber);
+  }, [redialNumber, loading, state, dial]);
 
   const activeRoles = useRolesByIds(roleIds);
   const combinedRoleRisk = useCombinedRisk(roleIds);

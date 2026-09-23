@@ -23,7 +23,6 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Live Calls", href: "/calls/live", icon: PhoneCall },
   { label: "Call History", href: "/calls/history", icon: History },
   { label: "Reports", href: "/reports", icon: SlidersHorizontal },
-  { label: "Memory", href: "/memory", icon: BrainCircuit },
   { label: "Roles", href: "/roles", icon: Users },
   { label: "Settings", href: "/settings", icon: Settings },
 ];

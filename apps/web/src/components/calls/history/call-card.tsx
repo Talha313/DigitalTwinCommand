@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowDownLeft, ArrowUpRight, Phone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { StatusDot } from "@/components/ui/status-dot";
@@ -34,9 +35,12 @@ export interface CallCardProps {
 }
 
 export function CallCard({ call, onOpen }: CallCardProps) {
+  const router = useRouter();
   const roles = useRolesByIds(call.role_ids);
   const direction = toUiDirection(call.direction);
   const DirectionIcon = direction === "inbound" ? ArrowDownLeft : ArrowUpRight;
+  const number = counterpartyNumber(call);
+  const canCall = number !== "Unknown";
 
   return (
     <div className="rounded-xl border border-border/60 bg-card p-4">
@@ -70,9 +74,21 @@ export function CallCard({ call, onOpen }: CallCardProps) {
 
       <div className="mt-3 flex items-center justify-between gap-2">
         <OutcomeBadge outcome={call.outcome} />
-        <Button variant="outline" size="sm" onClick={onOpen}>
-          Review
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="icon"
+            disabled={!canCall}
+            aria-label={`Call ${number}`}
+            title={canCall ? `Call ${number}` : "No number available"}
+            onClick={() => router.push(`/calls/live?dial=${encodeURIComponent(number)}`)}
+          >
+            <Phone className="h-4 w-4" aria-hidden />
+          </Button>
+          <Button variant="outline" size="sm" onClick={onOpen}>
+            Review
+          </Button>
+        </div>
       </div>
     </div>
   );

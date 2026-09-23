@@ -37,9 +37,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body className="min-h-svh bg-background font-sans text-foreground antialiased">
+      <body className="flex h-svh flex-col overflow-hidden bg-background font-sans text-foreground antialiased">
         <PwaStatus />
-        {children}
+        <div className="min-h-0 flex-1">{children}</div>
       </body>
     </html>
   );

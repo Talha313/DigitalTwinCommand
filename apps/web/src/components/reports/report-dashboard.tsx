@@ -4,6 +4,7 @@ import * as React from "react";
 import { Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Pagination } from "@/components/ui/pagination";
 import { PageContainer } from "@/components/layout/page-container";
 import { ApiError } from "@/lib/api-client";
 import {
@@ -20,6 +21,8 @@ import {
   type ReportFilterBucket,
 } from "./report-filters";
 
+const PAGE_SIZE = 9;
+
 const BUCKETS: ReportFilterBucket[] = [
   "all",
   "ready",
@@ -34,6 +37,7 @@ export function ReportDashboard() {
   const [error, setError] = React.useState<string | null>(null);
   const [filter, setFilter] = React.useState<ReportFilterBucket>("all");
   const [generating, setGenerating] = React.useState(false);
+  const [page, setPage] = React.useState(1);
 
   const refresh = React.useCallback(async () => {
     try {
@@ -59,6 +63,13 @@ export function ReportDashboard() {
   );
 
   const visible = list.filter((report) => matchesBucket(report.status, filter));
+  const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const paged = visible.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [filter]);
 
   const approve = async (id: string) => {
     try {
@@ -127,15 +138,18 @@ export function ReportDashboard() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {visible.map((report) => (
-            <ReportCard
-              key={report.id}
-              report={report}
-              onApprove={() => approve(report.id)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {paged.map((report) => (
+              <ReportCard
+                key={report.id}
+                report={report}
+                onApprove={() => approve(report.id)}
+              />
+            ))}
+          </div>
+          <Pagination page={safePage} pageCount={pageCount} onPageChange={setPage} />
+        </>
       )}
     </PageContainer>
   );

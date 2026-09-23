@@ -5,10 +5,12 @@ import * as React from "react";
 import { ChatInput } from "@/components/chat/chat-input";
 import { ChatWindow } from "@/components/chat/chat-window";
 import { ConversationHeader } from "@/components/chat/conversation-header";
+import { ConversationList } from "@/components/chat/conversation-list";
 import {
   getConversation,
   listConversations,
   streamChat,
+  type ConversationListItem,
   type UiChatMessage,
 } from "@/lib/chat";
 import { suggestedPrompts } from "@/lib/mock-data/chat";
@@ -43,25 +45,36 @@ export function ChatClient() {
   const [input, setInput] = React.useState("");
   const [isThinking, setIsThinking] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
+  const [conversations, setConversations] = React.useState<ConversationListItem[]>([]);
 
   const streamRef = React.useRef<ReturnType<typeof streamChat> | null>(null);
+
+  const refreshConversations = React.useCallback(async () => {
+    try {
+      const list = await listConversations();
+      setConversations(list);
+      return list;
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const loadConversation = React.useCallback(async (id: string) => {
+    const full = await getConversation(id);
+    setConversationId(full.id);
+    setRoleIds(full.role_ids);
+    setTitle(full.title ?? "Conversation");
+    setMessages(full.messages.map(toUiMessage));
+  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const conversations = await listConversations();
+        const list = await refreshConversations();
         if (cancelled) return;
-        if (conversations.length > 0) {
-          const latest = conversations[0];
-          if (!latest) return;
-          const full = await getConversation(latest.id);
-          if (cancelled) return;
-          setConversationId(full.id);
-          setRoleIds(full.role_ids);
-          setTitle(full.title ?? "Conversation");
-          setMessages(full.messages.map(toUiMessage));
-        }
+        const latest = list[0];
+        if (latest) await loadConversation(latest.id);
       } catch {
         /* start fresh if this fails — not fatal */
       } finally {
@@ -72,7 +85,14 @@ export function ChatClient() {
       cancelled = true;
       streamRef.current?.abort();
     };
-  }, []);
+  }, [refreshConversations, loadConversation]);
+
+  const selectConversation = (id: string) => {
+    if (id === conversationId || isThinking) return;
+    streamRef.current?.abort();
+    setIsThinking(false);
+    void loadConversation(id);
+  };
 
   const send = (text: string) => {
     const trimmed = text.trim();
@@ -114,6 +134,7 @@ export function ChatClient() {
               ),
             );
             setIsThinking(false);
+            void refreshConversations();
           } else if (event.type === "error") {
             setMessages((prev) =>
               prev.map((m) =>
@@ -149,28 +170,42 @@ export function ChatClient() {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <ConversationHeader
-        title={title}
-        roleIds={roleIds}
-        onRoleIdsChange={setRoleIds}
-        onNewChat={newChat}
-        messageCount={messages.length}
-      />
-      <ChatWindow
-        messages={messages}
-        isThinking={isThinking}
-        roleNames={roleNames}
-        prompts={suggestedPrompts}
-        onPromptSelect={setInput}
-      />
-      <ChatInput
-        value={input}
-        onChange={setInput}
-        onSend={send}
-        disabled={isThinking}
-        roleCount={roleIds.length}
-      />
+    <div className="flex h-full min-h-0">
+      <aside className="hidden w-72 min-w-0 shrink-0 overflow-hidden border-r border-border/60 md:flex">
+        <ConversationList
+          conversations={conversations}
+          activeId={conversationId}
+          onSelect={selectConversation}
+          onNewChat={newChat}
+        />
+      </aside>
+
+      <div className="flex h-full min-w-0 flex-1 flex-col">
+        <ConversationHeader
+          title={title}
+          roleIds={roleIds}
+          onRoleIdsChange={setRoleIds}
+          onNewChat={newChat}
+          messageCount={messages.length}
+          conversations={conversations}
+          conversationId={conversationId}
+          onSelectConversation={selectConversation}
+        />
+        <ChatWindow
+          messages={messages}
+          isThinking={isThinking}
+          roleNames={roleNames}
+          prompts={suggestedPrompts}
+          onPromptSelect={setInput}
+        />
+        <ChatInput
+          value={input}
+          onChange={setInput}
+          onSend={send}
+          disabled={isThinking}
+          roleCount={roleIds.length}
+        />
+      </div>
     </div>
   );
 }

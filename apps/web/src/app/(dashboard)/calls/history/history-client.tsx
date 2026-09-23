@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { PageContainer } from "@/components/layout/page-container";
+import { Pagination } from "@/components/ui/pagination";
 import { CallCard } from "@/components/calls/history/call-card";
 import { CallDetailsDrawer } from "@/components/calls/history/call-details-drawer";
 import { CallFilters } from "@/components/calls/history/call-filters";
@@ -11,6 +12,8 @@ import { CallSearch } from "@/components/calls/history/call-search";
 import type { DirectionFilter } from "@/components/calls/history/call-filters";
 import { counterpartyNumber, toUiStatus, type UiCallStatus } from "@/lib/call-history";
 import { listCalls, toUiDirection, type CallRead } from "@/lib/calls";
+
+const PAGE_SIZE = 10;
 
 function matchesQuery(call: CallRead, query: string): boolean {
   const q = query.trim().toLowerCase();
@@ -32,6 +35,7 @@ export function CallHistoryClient() {
   const [roleIds, setRoleIds] = React.useState<string[]>([]);
   const [direction, setDirection] = React.useState<DirectionFilter>("all");
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const [page, setPage] = React.useState(1);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -63,6 +67,14 @@ export function CallHistoryClient() {
     }
     return true;
   });
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [query, status, roleIds, direction]);
 
   const clearFilters = () => {
     setStatus([]);
@@ -121,10 +133,10 @@ export function CallHistoryClient() {
       ) : (
         <>
           <div className="hidden md:block">
-            <CallHistoryTable calls={filtered} onOpen={setSelectedId} />
+            <CallHistoryTable calls={paged} onOpen={setSelectedId} />
           </div>
           <div className="grid gap-3 md:hidden">
-            {filtered.map((call) => (
+            {paged.map((call) => (
               <CallCard
                 key={call.id}
                 call={call}
@@ -132,6 +144,7 @@ export function CallHistoryClient() {
               />
             ))}
           </div>
+          <Pagination page={safePage} pageCount={pageCount} onPageChange={setPage} />
         </>
       )}
 

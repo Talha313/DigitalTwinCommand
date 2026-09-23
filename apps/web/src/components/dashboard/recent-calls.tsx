@@ -2,8 +2,12 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Phone } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { CallDetailsDrawer } from "@/components/calls/history/call-details-drawer";
 import {
   listCalls,
   toUiDirection,
@@ -50,8 +54,10 @@ function durationLabel(call: CallRead): string {
 }
 
 export function RecentCalls({ className }: { className?: string }) {
+  const router = useRouter();
   const [calls, setCalls] = React.useState<CallRead[] | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -117,18 +123,24 @@ export function RecentCalls({ className }: { className?: string }) {
                 <th scope="col" className="px-5 py-3 font-medium">
                   Date
                 </th>
+                <th scope="col" className="px-5 py-3 text-right font-medium">
+                  <span className="sr-only">Call</span>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
               {calls.map((call) => {
                 const meta = STATUS_META[call.status];
+                const number = callerLabel(call);
+                const canCall = number !== "Unknown";
                 return (
                   <tr
                     key={call.id}
-                    className="transition-colors hover:bg-muted/30"
+                    onClick={() => setSelectedId(call.id)}
+                    className="cursor-pointer transition-colors hover:bg-muted/30"
                   >
                     <td className="px-5 py-3 font-medium text-foreground">
-                      {callerLabel(call)}
+                      {number}
                     </td>
                     <td className="px-5 py-3 text-muted-foreground">
                       {directionLabel(call)}
@@ -142,6 +154,21 @@ export function RecentCalls({ className }: { className?: string }) {
                     <td className="px-5 py-3 text-muted-foreground">
                       {formatRelativeTime(call.started_at ?? call.created_at)}
                     </td>
+                    <td className="px-5 py-3 text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        disabled={!canCall}
+                        aria-label={`Call ${number}`}
+                        title={canCall ? `Call ${number}` : "No number available"}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          router.push(`/calls/live?dial=${encodeURIComponent(number)}`);
+                        }}
+                      >
+                        <Phone className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </td>
                   </tr>
                 );
               })}
@@ -151,27 +178,53 @@ export function RecentCalls({ className }: { className?: string }) {
           <ul className="divide-y divide-border/50 md:hidden">
             {calls.map((call) => {
               const meta = STATUS_META[call.status];
+              const number = callerLabel(call);
+              const canCall = number !== "Unknown";
               return (
                 <li
                   key={call.id}
-                  className="flex items-center justify-between gap-3 px-5 py-3.5"
+                  onClick={() => setSelectedId(call.id)}
+                  className="flex cursor-pointer items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-muted/30"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-foreground">
-                      {callerLabel(call)}
+                      {number}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {directionLabel(call)} &middot; {durationLabel(call)}{" "}
                       &middot; {formatRelativeTime(call.started_at ?? call.created_at)}
                     </p>
                   </div>
-                  <Badge variant={meta.variant}>{meta.label}</Badge>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <Badge variant={meta.variant}>{meta.label}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={!canCall}
+                      aria-label={`Call ${number}`}
+                      title={canCall ? `Call ${number}` : "No number available"}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        router.push(`/calls/live?dial=${encodeURIComponent(number)}`);
+                      }}
+                    >
+                      <Phone className="h-4 w-4" aria-hidden />
+                    </Button>
+                  </div>
                 </li>
               );
             })}
           </ul>
         </>
       )}
+
+      <CallDetailsDrawer
+        call={calls?.find((call) => call.id === selectedId) ?? null}
+        open={selectedId !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedId(null);
+        }}
+      />
     </DashboardCard>
   );
 }

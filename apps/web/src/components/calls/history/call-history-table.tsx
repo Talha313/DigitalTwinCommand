@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowDownLeft, ArrowUpRight, Phone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { StatusDot } from "@/components/ui/status-dot";
@@ -14,6 +15,7 @@ import {
   toUiStatus,
   type UiCallStatus,
 } from "@/lib/call-history";
+
 import { toUiDirection, type CallRead } from "@/lib/calls";
 
 import { OutcomeBadge } from "./outcome-badge";
@@ -42,11 +44,14 @@ function CallRow({
   call: CallRead;
   onOpen: (id: string) => void;
 }) {
+  const router = useRouter();
   const roles = useRolesByIds(call.role_ids);
   const shown = roles.slice(0, MAX_ROLE_CHIPS);
   const extra = roles.length - shown.length;
   const direction = toUiDirection(call.direction);
   const DirectionIcon = direction === "inbound" ? ArrowDownLeft : ArrowUpRight;
+  const number = counterpartyNumber(call);
+  const canCall = number !== "Unknown";
 
   return (
     <tr
@@ -92,16 +97,31 @@ function CallRow({
         {formatCallTimestamp(callTimestamp(call))}
       </td>
       <td className="px-4 py-3 text-right">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpen(call.id);
-          }}
-        >
-          Review
-        </Button>
+        <div className="flex items-center justify-end gap-1.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={!canCall}
+            aria-label={`Call ${number}`}
+            title={canCall ? `Call ${number}` : "No number available"}
+            onClick={(event) => {
+              event.stopPropagation();
+              router.push(`/calls/live?dial=${encodeURIComponent(number)}`);
+            }}
+          >
+            <Phone className="h-4 w-4" aria-hidden />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpen(call.id);
+            }}
+          >
+            Review
+          </Button>
+        </div>
       </td>
     </tr>
   );
