@@ -31,7 +31,7 @@ export interface AuthLayoutProps {
 
 export function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className="relative flex min-h-svh w-full flex-col lg:flex-row">
+    <div className="relative flex h-full w-full flex-col overflow-y-auto lg:flex-row">
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="auth-grid absolute inset-0 opacity-60" />
         <div className="absolute -left-32 -top-32 h-[30rem] w-[30rem] rounded-full bg-primary/10 blur-3xl" />

@@ -71,4 +71,44 @@
   .auth-link {
     @apply rounded-sm font-medium text-primary underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
   }
+
+  .audio-seek {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  .audio-seek::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 11px;
+    width: 11px;
+    border-radius: 9999px;
+    background: hsl(var(--primary));
+    box-shadow: 0 0 0 2px hsl(var(--background));
+    cursor: pointer;
+    transition: transform 120ms ease;
+  }
+
+  .audio-seek:hover::-webkit-slider-thumb {
+    transform: scale(1.2);
+  }
+
+  .audio-seek::-moz-range-thumb {
+    height: 11px;
+    width: 11px;
+    border: none;
+    border-radius: 9999px;
+    background: hsl(var(--primary));
+    box-shadow: 0 0 0 2px hsl(var(--background));
+    cursor: pointer;
+    transition: transform 120ms ease;
+  }
+
+  .audio-seek:hover::-moz-range-thumb {
+    transform: scale(1.2);
+  }
+
+  .audio-seek::-moz-range-track {
+    background: transparent;
+  }
 }

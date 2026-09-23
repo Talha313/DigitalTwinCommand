@@ -14,7 +14,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
     <RolesProvider>
       <SidebarProvider>
         <TooltipProvider delayDuration={200}>
-          <div className="flex h-svh w-full overflow-hidden bg-background">
+          <div className="flex h-full w-full overflow-hidden bg-background">
             <Sidebar className="hidden md:flex" />
             <div className="flex min-w-0 flex-1 flex-col">
               <Header />

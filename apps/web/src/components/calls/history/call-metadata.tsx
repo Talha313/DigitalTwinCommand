@@ -16,6 +16,7 @@ import {
 import { recordingUrl, toUiDirection, type CallRead } from "@/lib/calls";
 
 import { OutcomeBadge } from "./outcome-badge";
+import { RecordingPlayer } from "./recording-player";
 
 const STATUS_LABEL: Record<UiCallStatus, string> = {
   completed: "Completed",
@@ -102,13 +103,7 @@ export function CallMetadata({ call }: CallMetadataProps) {
         <Row label="Tool calls">{call.tool_call_count}</Row>
         <Row label="Recording">
           {call.recording_url ? (
-            <audio
-              controls
-              preload="none"
-              crossOrigin="use-credentials"
-              src={recordingUrl(call.id)}
-              className="h-8 w-full sm:w-64"
-            />
+            <RecordingPlayer src={recordingUrl(call.id)} />
           ) : (
             <span className="text-muted-foreground">Not available</span>
           )}

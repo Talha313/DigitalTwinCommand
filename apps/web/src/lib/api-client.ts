@@ -5,6 +5,16 @@ export const API_BASE_URL = (
 ).replace(/\/$/, "");
 const BASE_URL = API_BASE_URL;
 
+/** Auth endpoints return 401 for normal user-input reasons (wrong password,
+ * expired reset token, …) — those should surface as form errors, not force
+ * a redirect. Every other 401 means the session itself is no longer valid. */
+const AUTH_PATHS = new Set([
+  "/api/auth/login",
+  "/api/auth/signup",
+  "/api/auth/forgot-password",
+  "/api/auth/reset-password",
+]);
+
 export class ApiError extends Error {
   status: number;
   code: string;
@@ -46,6 +56,13 @@ export async function apiFetch<T = unknown>(
 
   if (!response.ok) {
     const err = payload?.error;
+    if (response.status === 401 && !AUTH_PATHS.has(path) && typeof window !== "undefined") {
+      const { clearSession } = await import("./auth");
+      clearSession();
+      if (window.location.pathname !== "/login") {
+        window.location.assign("/login");
+      }
+    }
     throw new ApiError(
       response.status,
       err?.code ?? "error",

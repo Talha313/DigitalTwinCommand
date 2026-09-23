@@ -23,7 +23,7 @@ export function Sidebar({ className }: { className?: string }) {
     <aside
       data-collapsed={collapsed}
       className={cn(
-        "flex h-svh flex-col border-r border-border/60 bg-card/40 transition-[width] duration-200 ease-out",
+        "flex h-full flex-col border-r border-border/60 bg-card/40 transition-[width] duration-200 ease-out",
         collapsed ? "w-[4.5rem]" : "w-64",
         className,
       )}
