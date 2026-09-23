@@ -1,5 +1,4 @@
 import {
-  BrainCircuit,
   History,
   LayoutDashboard,
   MessagesSquare,
