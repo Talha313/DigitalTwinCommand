@@ -57,7 +57,14 @@ class CallOutcomeUpdate(BaseModel):
 
 class WhisperCreate(BaseModel):
     text: str = Field(min_length=1, max_length=500)
-    kind: WhisperKind = WhisperKind.CONTEXTUAL_UPDATE
+    # CONTEXTUAL_UPDATE is a soft, non-interrupting hint — ElevenLabs' own
+    # docs describe it as background info the agent isn't obligated to act
+    # on. Observed live: an operator sent 3 whispers in one call and the
+    # agent acted on none of them, just kept answering the caller's actual
+    # questions. USER_MESSAGE forces an immediate response and matches what
+    # the operator UI already promises ("injected into the Twin's next
+    # turn") — see WhisperPanel's copy in apps/web.
+    kind: WhisperKind = WhisperKind.USER_MESSAGE
 
 
 class WhisperRead(ORMModel):

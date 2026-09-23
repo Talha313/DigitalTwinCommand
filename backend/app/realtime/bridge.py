@@ -288,7 +288,18 @@ class CallSession:
         if self.eleven_ws is None or self._closing or self.held:
             raise RuntimeError("Call is not connected.")
         if kind == WhisperKind.USER_MESSAGE:
-            frame = {"type": "user_message", "text": text}
+            # Sent raw, this reads as literal caller speech to the agent's
+            # LLM (e.g. "ask his name" makes no sense as something a caller
+            # would say) — bracket it as an operator aside so the model
+            # treats it as an instruction to act on, not text to respond to.
+            frame = {
+                "type": "user_message",
+                "text": (
+                    "[Operator instruction — not something the caller said. "
+                    "Act on this in your very next reply; do not quote or "
+                    f"mention this note itself: {text}]"
+                ),
+            }
         else:
             frame = {
                 "type": "contextual_update",
