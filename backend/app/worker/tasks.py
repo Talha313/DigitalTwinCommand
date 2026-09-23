@@ -198,7 +198,12 @@ async def _page_operators(report_id: str, message: str) -> None:
         ]
     payload = {
         "title": "Digital Twin — Daily report",
-        "body": message,
+        # notifications.body is varchar(500) — a long upstream error (e.g.
+        # ElevenLabs' quota_exceeded body, which includes the full JSON
+        # detail) has been observed exceeding that and crashing this exact
+        # failure-notification path with a DB error, masking the real error
+        # and leaving operators unpaged.
+        "body": message if len(message) <= 500 else message[:497] + "...",
         "url": f"/reports/{report_id}",
         "tag": "daily-report",
     }

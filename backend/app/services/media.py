@@ -111,8 +111,14 @@ async def package(*, video_url: str, srt_text: str, aspect: str) -> bytes:
             "loudnorm=I=-16:TP=-1.5:LRA=11",
             "-c:v",
             "libx264",
+            # "medium" (the libx264 default) was observed taking so long on
+            # this droplet's limited CPU — burning subtitles into a ~10+ min
+            # 1080p video, twice (once per aspect ratio), run sequentially —
+            # that it blew past even a 3-hour job timeout while an operator
+            # was actively waiting on the report. "veryfast" trades a modest
+            # amount of compression efficiency for a large (multi-x) speedup.
             "-preset",
-            "medium",
+            "veryfast",
             "-crf",
             "20",
             "-c:a",
