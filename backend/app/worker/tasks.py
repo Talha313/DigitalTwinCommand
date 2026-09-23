@@ -36,8 +36,11 @@ from app.worker.report_pipeline import (
 log = get_logger(__name__)
 
 
-async def run_daily_report(ctx: dict[str, Any]) -> str:
+async def run_daily_report(ctx: dict[str, Any]) -> str | None:
     """Cron entrypoint — idempotent per calendar date."""
+    if not settings.daily_report_enabled:
+        log.info("daily report cron skipped — DAILY_REPORT_ENABLED=false")
+        return None
     today = date.today()
     async with session_scope() as session:
         existing = (

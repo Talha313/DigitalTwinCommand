@@ -68,6 +68,22 @@ async def concat_audio(chunks: list[bytes]) -> bytes:
         return out.read_bytes()
 
 
+async def trim_audio_to_max(audio: bytes, *, max_seconds: int) -> bytes:
+    """Hard cap on report length, independent of whether the script-writing
+    prompt was followed — a prompt asking for ~10 minutes has already been
+    observed producing a 13.6-minute script in practice. `-t` only cuts the
+    output short if it's actually longer than max_seconds; a shorter input
+    passes through unchanged. `-c copy` — no re-encode, just a fast remux."""
+    if not ffmpeg_available():
+        return audio
+    with tempfile.TemporaryDirectory() as tmp:
+        d = Path(tmp)
+        src, out = d / "in.mp3", d / "out.mp3"
+        src.write_bytes(audio)
+        await _run("-i", src.as_posix(), "-t", str(max_seconds), "-c", "copy", out.as_posix())
+        return out.read_bytes()
+
+
 def build_srt(script: str, *, total_seconds: float) -> str:
     """Naive even-split captions — good enough for a spot check; replace with a
     forced-alignment pass later."""

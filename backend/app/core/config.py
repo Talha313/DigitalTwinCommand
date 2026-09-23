@@ -65,6 +65,8 @@ class Settings(BaseSettings):
     report_tz: str = "America/New_York"
     report_cron_hour: int = 5
     report_cron_minute: int = 30
+    daily_report_enabled: bool = True
+    report_max_seconds: int = 300
     report_approval_required: bool = True
     ffmpeg_bin: str = "ffmpeg"
 

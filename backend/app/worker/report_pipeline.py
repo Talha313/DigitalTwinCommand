@@ -40,8 +40,10 @@ _SCRIPT_SYSTEM = (
     "sentences, direct, warm, opinionated, no filler, never 'as an AI', no "
     "'in today's video'. Structure: hook -> overnight/tape -> three stories -> "
     "what it means for a normal investor -> close with tomorrow's watch. "
-    "1,250-1,500 spoken words (~10 minutes). Cite dates. If a number is "
-    "uncertain, say so. Output the spoken script only — no headings, no notes."
+    "600-700 spoken words (~4-5 minutes) — this is a hard limit, do not "
+    "exceed it even if that means dropping the third story. Cite dates. If a "
+    "number is uncertain, say so. Output the spoken script only — no "
+    "headings, no notes."
 )
 
 
@@ -252,10 +254,13 @@ async def render(report_id: str) -> None:
             await _set_status(report_id, ReportStatus.FAILED, error=exc.message)
             raise
         audio = await media.concat_audio(audio_parts)
+        audio = await media.trim_audio_to_max(audio, max_seconds=settings.report_max_seconds)
         audio_url = await storage.put(audio_key, audio, content_type="audio/mpeg")
     await _stage(report_id, ReportStage.VOICE, ReportJobStatus.COMPLETED)
 
-    total_seconds = max(60.0, len(script.split()) / 150 * 60)
+    total_seconds = min(
+        settings.report_max_seconds, max(60.0, len(script.split()) / 150 * 60)
+    )
     srt_text = media.build_srt(script, total_seconds=total_seconds)
     captions_url = await storage.put(
         f"{report_key}/captions.srt", srt_text.encode(), content_type="text/plain"
