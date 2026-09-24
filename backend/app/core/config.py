@@ -32,7 +32,14 @@ class Settings(BaseSettings):
     anthropic_chat_model: str = "claude-sonnet-5"
     anthropic_report_model: str = "claude-opus-5"
     anthropic_grader_model: str = "claude-haiku-4-5-20251001"
+    anthropic_tools_model: str = "claude-haiku-4-5-20251001"
     anthropic_max_tokens: int = 4096
+
+    # Shared secret the live ElevenLabs phone agent sends back to us when it
+    # calls our own /webhooks/tools/* endpoints (e.g. web_search) — keeps
+    # provider API keys off ElevenLabs' own dashboard instead of pasting them
+    # straight into a tool's Authentication field there.
+    tools_shared_secret: str = ""
 
     elevenlabs_api_key: str = ""
     elevenlabs_agent_id: str = ""

@@ -25,6 +25,7 @@ from app.routers import (
     reports,
     roles,
     telephony,
+    tools,
     users,
     webhooks,
     whispers,
@@ -55,6 +56,7 @@ webhook_router = APIRouter()
 webhook_router.include_router(telephony.router)
 webhook_router.include_router(webhooks.router)
 webhook_router.include_router(media.router)
+webhook_router.include_router(tools.router)
 
 ws_router = APIRouter()
 ws_router.include_router(ws.router)
