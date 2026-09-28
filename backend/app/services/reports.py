@@ -93,7 +93,7 @@ class ReportService(Service):
 
         raw: dict[str, str] = {}
         key = f"reports/{report.date or report.id}"
-        for aspect in ("16x9", "9x16"):
+        for aspect in ("16x9", "9x16", "1x1"):
             if files and files.get(aspect):
                 if not storage.configured:
                     raise NotConfiguredError("S3 is not configured — cannot store the upload.")
@@ -104,7 +104,7 @@ class ReportService(Service):
                 raw[aspect] = urls[aspect]
         if not raw:
             raise ValidationError(
-                "Provide at least one rendered video (file_16x9 / file_9x16 or a URL)."
+                "Provide at least one rendered video (file_16x9 / file_9x16 / file_1x1 or a URL)."
             )
 
         report.status = ReportStatus.GENERATING
