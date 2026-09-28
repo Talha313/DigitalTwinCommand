@@ -284,7 +284,7 @@ async def render(report_id: str) -> None:
 
     results: dict[str, str] = {}
     try:
-        for aspect in ("16x9", "9x16"):
+        for aspect in ("16x9", "9x16", "1x1"):
             raw_video_url = await lipsync_client.render(audio_url=audio_url, aspect=aspect)
             results[aspect] = raw_video_url
     except AppError as exc:
@@ -299,7 +299,7 @@ async def finalize_from_videos(
     report_id: str, raw_videos: dict[str, str], *, srt_text: str | None = None
 ) -> None:
     """Stages 5-7: ffmpeg package (captions + loudnorm) -> S3 -> READY.
-    ``raw_videos`` maps '16x9'/'9x16' to a downloadable source MP4 URL."""
+    ``raw_videos`` maps '16x9'/'9x16'/'1x1' to a downloadable source MP4 URL."""
     async with session_scope() as session:
         report = await session.get(Report, as_uuid(report_id))
         if report is None:
@@ -332,6 +332,8 @@ async def finalize_from_videos(
             report.video_16x9 = final["16x9"]
         if "9x16" in final:
             report.video_9x16 = final["9x16"]
+        if "1x1" in final:
+            report.video_1x1 = final["1x1"]
         report.status = ReportStatus.READY
         report.error_message = None
     await _stage(report_id, ReportStage.UPLOAD, ReportJobStatus.COMPLETED)
