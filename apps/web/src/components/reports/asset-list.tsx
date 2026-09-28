@@ -25,6 +25,7 @@ export function AssetList({ report }: AssetListProps) {
     { id: "audio", label: "Voice audio", icon: FileAudio, url: report.audio_url },
     { id: "video_16x9", label: "Video (16:9)", icon: FileVideo, url: report.video_16x9 },
     { id: "video_9x16", label: "Video (9:16)", icon: FileVideo, url: report.video_9x16 },
+    { id: "video_1x1", label: "Video (1:1)", icon: FileVideo, url: report.video_1x1 },
     { id: "captions", label: "Captions", icon: Subtitles, url: report.captions_url },
   ];
 

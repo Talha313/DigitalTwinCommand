@@ -1,5 +1,5 @@
 """ffmpeg post-processing for the daily report: burn captions, loudness-
-normalise, and export 1080p 16:9 + 9:16."""
+normalise, and export 720p 16:9 + 9:16 + 1:1."""
 
 from __future__ import annotations
 
@@ -119,10 +119,17 @@ async def package(*, video_url: str, srt_text: str, aspect: str) -> bytes:
         # the actual bottleneck on this droplet's CPU, and encoder presets
         # don't speed that up at all — only resolution does, since it's
         # roughly proportional to pixel count.
-        w, h = (720, 1280) if aspect == "9x16" else (1280, 720)
+        sizes = {"9x16": (720, 1280), "1x1": (720, 720)}
+        w, h = sizes.get(aspect, (1280, 720))
+        # A plain `crop=w:h` centers on both axes — for a portrait/square
+        # target cropped out of a wider source, that trims equally off the
+        # top and bottom, which was cutting into the avatar's head (reported:
+        # "half my head cut off"). Anchoring y=0 keeps the top of the frame
+        # (where the head is) and only trims from the bottom instead.
+        crop_y = "0" if aspect in ("9x16", "1x1") else f"(in_h-{h})/2"
         vf = (
             f"scale={w}:{h}:force_original_aspect_ratio=increase,"
-            f"crop={w}:{h},"
+            f"crop={w}:{h}:(in_w-{w})/2:{crop_y},"
             f"subtitles={srt.as_posix()}:force_style='FontSize=22,Outline=2,Alignment=2'"
         )
         await _run(
