@@ -42,6 +42,7 @@ export function ReportDetail({ reportId }: { reportId: string }) {
   const [busy, setBusy] = React.useState(false);
   const [video16x9Url, setVideo16x9Url] = React.useState("");
   const [video9x16Url, setVideo9x16Url] = React.useState("");
+  const [video1x1Url, setVideo1x1Url] = React.useState("");
 
   const refresh = React.useCallback(async () => {
     try {
@@ -73,16 +74,18 @@ export function ReportDetail({ reportId }: { reportId: string }) {
   };
 
   const submitVideo = async () => {
-    if (!video16x9Url.trim() && !video9x16Url.trim()) return;
+    if (!video16x9Url.trim() && !video9x16Url.trim() && !video1x1Url.trim()) return;
     setBusy(true);
     setError(null);
     try {
       await submitAvatar(reportId, {
         video_16x9_url: video16x9Url.trim() || undefined,
         video_9x16_url: video9x16Url.trim() || undefined,
+        video_1x1_url: video1x1Url.trim() || undefined,
       });
       setVideo16x9Url("");
       setVideo9x16Url("");
+      setVideo1x1Url("");
       await refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to submit avatar video.");
@@ -161,7 +164,7 @@ export function ReportDetail({ reportId }: { reportId: string }) {
             Render this report&apos;s script in ElevenCreative, then paste the
             hosted video URL(s) here.
           </p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1.5">
               <Label htmlFor="video-16x9">16:9 video URL</Label>
               <Input
@@ -180,11 +183,22 @@ export function ReportDetail({ reportId }: { reportId: string }) {
                 placeholder="https://…"
               />
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="video-1x1">1:1 video URL</Label>
+              <Input
+                id="video-1x1"
+                value={video1x1Url}
+                onChange={(e) => setVideo1x1Url(e.target.value)}
+                placeholder="https://…"
+              />
+            </div>
           </div>
           <Button
             size="sm"
             onClick={submitVideo}
-            disabled={busy || (!video16x9Url.trim() && !video9x16Url.trim())}
+            disabled={
+              busy || (!video16x9Url.trim() && !video9x16Url.trim() && !video1x1Url.trim())
+            }
           >
             Submit
           </Button>
@@ -217,7 +231,11 @@ export function ReportDetail({ reportId }: { reportId: string }) {
           <ScriptPreview script={report.script} briefJson={report.brief_json} />
         ) : null}
         {tab === "video" ? (
-          <VideoPreview video16x9={report.video_16x9} video9x16={report.video_9x16} />
+          <VideoPreview
+            video16x9={report.video_16x9}
+            video9x16={report.video_9x16}
+            video1x1={report.video_1x1}
+          />
         ) : null}
         {tab === "assets" ? <AssetList report={report} /> : null}
       </div>
