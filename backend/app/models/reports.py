@@ -31,6 +31,7 @@ class ReportRead(ORMModel):
     audio_url: str | None = None
     video_16x9: str | None = None
     video_9x16: str | None = None
+    video_1x1: str | None = None
     captions_url: str | None = None
     model: str | None = None
     cost_cents: int | None = None
@@ -49,6 +50,7 @@ class ReportAvatarSubmit(BaseModel):
 
     video_16x9_url: str | None = None
     video_9x16_url: str | None = None
+    video_1x1_url: str | None = None
 
 
 class ReportJobRead(ORMModel):
