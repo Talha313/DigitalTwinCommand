@@ -42,6 +42,7 @@ class Report(UUIDMixin, Base):
     audio_url: Mapped[str | None] = mapped_column(Text)
     video_16x9: Mapped[str | None] = mapped_column(Text)
     video_9x16: Mapped[str | None] = mapped_column(Text)
+    video_1x1: Mapped[str | None] = mapped_column(Text)
     captions_url: Mapped[str | None] = mapped_column(Text)
 
     model: Mapped[str | None] = mapped_column(String(64))
