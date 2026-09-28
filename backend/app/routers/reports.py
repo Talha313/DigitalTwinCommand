@@ -59,8 +59,10 @@ async def submit_report_avatar(
     report_id: str,
     file_16x9: UploadFile | None = File(default=None),
     file_9x16: UploadFile | None = File(default=None),
+    file_1x1: UploadFile | None = File(default=None),
     video_16x9_url: str | None = Form(default=None),
     video_9x16_url: str | None = Form(default=None),
+    video_1x1_url: str | None = Form(default=None),
     _: User = Depends(require_role(UserRole.OPERATOR)),
     service: ReportService = Depends(get_reports_service),
 ) -> ReportRead:
@@ -68,14 +70,14 @@ async def submit_report_avatar(
     ``awaiting_avatar``. Upload the MP4(s) as multipart files, or pass hosted
     URLs. The pipeline then burns captions + loudnorm and publishes."""
     files: dict[str, bytes] = {}
-    for aspect, upload in (("16x9", file_16x9), ("9x16", file_9x16)):
+    for aspect, upload in (("16x9", file_16x9), ("9x16", file_9x16), ("1x1", file_1x1)):
         if upload is None:
             continue
         data = await upload.read()
         if len(data) > _MAX_VIDEO_BYTES:
             raise ValidationError(f"{aspect} video exceeds 500 MB.")
         files[aspect] = data
-    urls = {"16x9": video_16x9_url, "9x16": video_9x16_url}
+    urls = {"16x9": video_16x9_url, "9x16": video_9x16_url, "1x1": video_1x1_url}
     return await service.submit_avatar(
         report_id, files=files or None, urls={k: v for k, v in urls.items() if v} or None
     )
