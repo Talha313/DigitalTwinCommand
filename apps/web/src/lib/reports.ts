@@ -50,6 +50,7 @@ export interface ReportRead {
   audio_url: string | null;
   video_16x9: string | null;
   video_9x16: string | null;
+  video_1x1: string | null;
   captions_url: string | null;
   model: string | null;
   cost_cents: number | null;
@@ -78,8 +79,10 @@ export interface ReportJobRead {
 export interface AvatarSubmitInput {
   file_16x9?: File;
   file_9x16?: File;
+  file_1x1?: File;
   video_16x9_url?: string;
   video_9x16_url?: string;
+  video_1x1_url?: string;
 }
 
 export function listReports(): Promise<ReportListItem[]> {
@@ -113,11 +116,15 @@ export function submitAvatar(
   const formData = new FormData();
   if (input.file_16x9) formData.append("file_16x9", input.file_16x9);
   if (input.file_9x16) formData.append("file_9x16", input.file_9x16);
+  if (input.file_1x1) formData.append("file_1x1", input.file_1x1);
   if (input.video_16x9_url) {
     formData.append("video_16x9_url", input.video_16x9_url);
   }
   if (input.video_9x16_url) {
     formData.append("video_9x16_url", input.video_9x16_url);
+  }
+  if (input.video_1x1_url) {
+    formData.append("video_1x1_url", input.video_1x1_url);
   }
   return apiFetch<ReportRead>(`/api/reports/${reportId}/avatar`, {
     method: "POST",

@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "node init && next dev",
+    "build": "node init && next build",
+    "start": "node init && next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "pwa:build": "NEXT_PUBLIC_API_URL='' NEXT_DIST_DIR=.next-mobile PWA_TEST_BACKEND_URL=http://127.0.0.1:8000 next build",
