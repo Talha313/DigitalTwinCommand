@@ -5,16 +5,17 @@ import { Clapperboard } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-type Format = "16_9" | "9_16";
+type Format = "16_9" | "9_16" | "1_1";
 
 export interface VideoPreviewProps {
   video16x9: string | null;
   video9x16: string | null;
+  video1x1: string | null;
 }
 
-export function VideoPreview({ video16x9, video9x16 }: VideoPreviewProps) {
+export function VideoPreview({ video16x9, video9x16, video1x1 }: VideoPreviewProps) {
   const [format, setFormat] = React.useState<Format>("16_9");
-  const url = format === "16_9" ? video16x9 : video9x16;
+  const url = format === "16_9" ? video16x9 : format === "9_16" ? video9x16 : video1x1;
 
   return (
     <div className="space-y-3">
@@ -23,6 +24,7 @@ export function VideoPreview({ video16x9, video9x16 }: VideoPreviewProps) {
           [
             { id: "16_9", label: "16:9" },
             { id: "9_16", label: "9:16" },
+            { id: "1_1", label: "1:1" },
           ] as { id: Format; label: string }[]
         ).map((option) => (
           <button
@@ -45,7 +47,11 @@ export function VideoPreview({ video16x9, video9x16 }: VideoPreviewProps) {
       <div
         className={cn(
           "mx-auto flex items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-gradient-to-br from-slate-900 via-background to-slate-900",
-          format === "16_9" ? "aspect-video w-full" : "aspect-[9/16] w-full max-w-[240px]",
+          format === "16_9"
+            ? "aspect-video w-full"
+            : format === "9_16"
+              ? "aspect-[9/16] w-full max-w-[240px]"
+              : "aspect-square w-full max-w-[280px]",
         )}
       >
         {url ? (

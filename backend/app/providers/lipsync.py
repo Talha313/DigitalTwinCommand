@@ -95,7 +95,8 @@ class LipSyncClient:
 
 
     async def _heygen(self, *, audio_url: str, aspect: str) -> str:
-        w, h = (720, 1280) if aspect == "9x16" else (1280, 720)
+        sizes = {"9x16": (720, 1280), "1x1": (720, 720)}
+        w, h = sizes.get(aspect, (1280, 720))
         headers = {"X-Api-Key": settings.lipsync_api_key}
         body = {
             "video_inputs": [
